@@ -1,6 +1,8 @@
-#include <stdio.h>
+#include "fs.h"
 
 int main(void) {
-    printf("Mini File System Simulator (versao inicial)\n");
+    fs_init();
+    fs_shell_loop();
+    fs_shutdown();
     return 0;
 }

@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Iinclude
 
-SRC = src/main.c
+SRC = src/main.c src/fs.c
 OBJ = $(SRC:.c=.o)
 BIN = mini_fs
 
