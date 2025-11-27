@@ -1,0 +1,10 @@
+# binário
+mini_fs
+
+# objetos
+*.o
+
+# arquivos temporários
+*.swp
+*.swo
+*~
