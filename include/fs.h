@@ -5,6 +5,8 @@
 #include <time.h>
 
 #define MAX_NAME_LEN 64
+#define PATH_MAX_LEN 1024
+#define MAX_TOKENS 32
 
 typedef enum {
     NODE_DIR,
@@ -43,6 +45,9 @@ typedef struct FsNode {
         
     FCB* fcb;                    // Ponteiro para o FCB (se for arquivo)
 } FsNode;
+
+extern FsNode* fs_root;
+extern FsNode* fs_current_dir;
 
 // Inicializa o sistema de arquivos em memória
 void fs_init(void);
