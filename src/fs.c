@@ -9,6 +9,36 @@
 
 static FsNode* root = NULL;
 static FsNode* current_dir = NULL;
+static int next_inode = 1; 
+
+// ===============
+// HELPERS DE FCB
+// ===============
+
+static FCB* create_fc(const char* name, FileType type){
+    FCB* fcb = (FCB*)malloc(sizeof(FCB));
+    if(!fcb){
+        fprintf(stderr, "Erro ao alocar memoria para FCB\n");
+        exit(EXIT_FAILURE);
+    }
+
+    strncpy(fcb->name, name, MAX_NAME_LEN -1);
+    fcb->name[MAX_NAME_LEN -1] = '\0';
+    fcb->size = 0;
+    fcb->type = type;
+
+    time_t now = time(NULL);
+    fcb->created_at = now;
+    fcb->modified_at = now;
+    fcb->accessed_at = now;
+
+    fcb->inode = next_inode++;
+    fcb->permissions = 0644;        // (rw-r--r--) por enquanto
+    fcb->content = NULL;            // Conteúdo vazio
+
+    return fcb;
+}
+
 
 // ====================
 // HELPERS DE ESTRUTURA 
@@ -30,6 +60,8 @@ static FsNode* create_node(const char* name, NodeType type, FsNode* parent){
     node->parent = parent;
     node->first_child = NULL;
     node->next_sibling = NULL;
+
+    node->fcb = NULL; // se for arquivo, vamos atribuir depois
 
     return node;
 }
@@ -127,6 +159,13 @@ static void free_tree(FsNode* node){
         child = next;                       // Vai para o próximo irmão
     }
 
+    if (node->fcb) { // Se for arquivo, libera o FCB
+        if (node->fcb->content) {
+            free(node->fcb->content);
+        }
+        free(node->fcb);
+    }
+
     // Libera o nó atual
     free(node);
 } 
@@ -214,6 +253,7 @@ static void cmd_help(){
     printf("  mkdir <dir>     - Cria um novo diretorio no diretório atual\n");
     printf("  ls [name]       - Lista o conteudo do diretorio atual\n");
     printf("  cd [path]       - Altera o diretório atual\n");
+    printf("  touch <file>    - Cria um novo arquivo no diretório atual\n");
     printf("  exit            - Sai do simulador\n");
 }
 
@@ -235,17 +275,17 @@ static void cmd_mkdir(int argc, char** argv){
     const char* name = argv[1];
 
     if (strlen(name) == 0 || strcmp(name, ".") == 0 || strcmp(name, "..") == 0){
-        printf("Nome de diretorio invalido\n");
+        printf("mkdir: Nome de diretorio invalido\n");
         return;
     }
 
     if (strchr(name, '/')){
-        printf("Nome de diretorio nao pode conter '/'\n");
+        printf("mkdir:Nome de diretorio nao pode conter '/'\n");
         return;
     }
 
     if (find_child(current_dir, name)){
-        printf("Erro: Diretorio ou arquivo com esse nome ja existe\n");
+        printf("mkdir: Diretorio ou arquivo com esse nome ja existe\n");
         return;
     }
 
@@ -269,7 +309,7 @@ static void cmd_ls(int argc, char** argv){
          } else {
             FsNode* child = find_child(current_dir, name);
             if (!child){
-                printf("Erro: Diretorio ou arquivo '%s' nao encontrado\n", name);
+                printf("ls: Diretorio ou arquivo '%s' nao encontrado\n", name);
                 return;
             }
             target = child;
@@ -318,11 +358,51 @@ static void cmd_cd(int argc, char** argv){
     } else {
         FsNode* child = find_child(current_dir, path);
         if(!child || child->type != NODE_DIR){ 
-            printf("Erro: Diretorio '%s' nao encontrado\n", path);
+            printf("cd: Diretorio '%s' nao encontrado\n", path);
             return;
         }
         current_dir  = child; // Muda para o diretório encontrado
     }
+}
+
+static void cmd_touch(int argc, char** argv){
+    if (argc < 2){
+        printf("Uso: touch <nome_arquivo>\n");
+        return;
+    }
+
+    for (int i = 1; i < argc; i++){
+        const char* name = argv[i];
+
+        if (strlen(name) == 0 || strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
+            printf("touch: Nome de arquivo inválido '%s'\n", name);
+            continue;
+        }
+
+        if (strchr(name, '/')){
+            printf("touch: Nome de arquivo nao pode conter '/': '%s'\n", name);
+            continue;
+        }
+        FsNode* existing = find_child(current_dir, name);
+        if (existing){
+            if (existing->type == NODE_DIR){
+                printf("touch: Já existe um diretório com esse nome: '%s'\n", name);
+                continue;
+            } 
+            // arquivo já existe -> atualiza timestamps
+            if (existing->fcb) {
+                time_t now = time(NULL);
+                existing->fcb->accessed_at = now;
+                existing->fcb->modified_at = now;
+            }
+        } else {
+            // Cria novo arquivo
+            FsNode* new_file = create_node(name, NODE_FILE, current_dir);
+            new_file->fcb = create_fc(name, FILETYPE_TEXT); // Por enquanto, todos são arquivos de texto
+            add_child(current_dir, new_file);
+        }
+    }
+
 }
     
 static void handle_command(int argc, char** argv){
@@ -338,6 +418,8 @@ static void handle_command(int argc, char** argv){
         cmd_ls(argc, argv);
     }else if (strcmp(cmd, "cd") == 0){  
         cmd_cd(argc, argv); 
+    } else if (strcmp(cmd, "touch") == 0) {
+        cmd_touch(argc, argv);
     }else {
         printf("Comando desconhecido: %s\n", cmd);
         printf("Digite 'help' para ver a lista de comandos disponiveis.\n");
