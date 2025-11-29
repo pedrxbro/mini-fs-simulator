@@ -5,7 +5,7 @@
 
 
 #define PATH_MAX_LEN 1024
-#define MAX_TOKENS 16
+#define MAX_TOKENS 32
 
 static FsNode* root = NULL;
 static FsNode* current_dir = NULL;
@@ -15,7 +15,7 @@ static int next_inode = 1;
 // HELPERS DE FCB
 // ===============
 
-static FCB* create_fc(const char* name, FileType type){
+static FCB* create_fcb(const char* name, FileType type){
     FCB* fcb = (FCB*)malloc(sizeof(FCB));
     if(!fcb){
         fprintf(stderr, "Erro ao alocar memoria para FCB\n");
@@ -248,13 +248,15 @@ void fs_shell_loop(){
 // Listagem de comandos
 static void cmd_help(){
     printf("Comandos disponiveis:\n");
-    printf("  help            - Mostra comandos disponíveis\n");
-    printf("  pwd             - Mostra o caminho do diretorio atual\n");
-    printf("  mkdir <dir>     - Cria um novo diretorio no diretório atual\n");
-    printf("  ls [name]       - Lista o conteudo do diretorio atual\n");
-    printf("  cd [path]       - Altera o diretório atual\n");
-    printf("  touch <file>    - Cria um novo arquivo no diretório atual\n");
-    printf("  exit            - Sai do simulador\n");
+    printf("  help                 - Mostra comandos disponíveis\n");
+    printf("  pwd                  - Mostra o caminho do diretorio atual\n");
+    printf("  mkdir <dir>          - Cria um novo diretorio no diretório atual\n");
+    printf("  ls [name]            - Lista o conteudo do diretorio atual\n");
+    printf("  cd [path]            - Altera o diretório atual\n");
+    printf("  touch <file>         - Cria um novo arquivo no diretório atual\n");
+    printf("  write <file> <text>  - Criar/Sobrescrever arquivos com o texto fornecido\n");
+    printf("  cat <file>           - Imprime o conteúdo do arquivo\n");
+    printf("  exit                 - Sai do simulador\n");
 }
 
 // Diretório atual 
@@ -398,11 +400,114 @@ static void cmd_touch(int argc, char** argv){
         } else {
             // Cria novo arquivo
             FsNode* new_file = create_node(name, NODE_FILE, current_dir);
-            new_file->fcb = create_fc(name, FILETYPE_TEXT); // Por enquanto, todos são arquivos de texto
+            new_file->fcb = create_fcb(name, FILETYPE_TEXT); // Por enquanto, todos são arquivos de texto
             add_child(current_dir, new_file);
         }
     }
 
+}
+
+static void cmd_write(int argc, char** argv){
+    if (argc < 3){
+       printf("Uso: write <nome_arquivo> <texto>\n");
+       return;
+    }
+
+    const char* file_name = argv[1];
+
+    if(strchr(file_name, '/')){
+        printf("write: Nome de arquivo nao pode conter '/': '%s'\n", file_name);
+        return;
+    }
+
+    // Monta o texto a partir do argv
+    size_t total_len = 0;
+    for (int i = 2; i < argc; i++){
+        total_len += strlen(argv[i]);
+        if (i < argc -1){
+            total_len += 1; // espaço
+        }
+    }
+
+    char* buffer = (char*)malloc(total_len +1);
+    if(!buffer){
+        fprintf(stderr, "Erro ao alocar memoria para conteudo do arquivo\n");
+        return;
+    }
+
+    buffer[0] = '\0';
+    for (int i = 2; i < argc; i++){
+        strcat(buffer, argv[i]);
+        if (i < argc -1){
+            strcat(buffer, " ");
+        }
+    }
+
+    // Verificar se o arquivo já existe
+    FsNode* node = find_child(current_dir, file_name);
+    if(!node){
+        // Cria novo arquivo
+        node = create_node(file_name, NODE_FILE, current_dir);
+        node->fcb = create_fcb(file_name, FILETYPE_TEXT);
+        add_child(current_dir, node);
+    } else {
+        if (node->type == NODE_DIR){
+            printf("write: '%s' nao e um arquivo\n", file_name);
+            free(buffer);
+            return;
+        }  
+        if (!node->fcb){
+            node->fcb = create_fcb(file_name, FILETYPE_TEXT);
+        }
+    }
+
+    // Sobrescrever arquivo
+    if(node->fcb->content){
+        free(node->fcb->content);
+    }
+
+    node->fcb->content = buffer;
+    node->fcb->size = total_len;
+
+    time_t now = time(NULL);
+    node->fcb->modified_at = now;
+    node->fcb->accessed_at = now;
+}
+
+
+// Imprime o conteúdo do arquivo
+static void cmd_cat(int argc, char** argv){
+    if (argc < 2){
+        printf("Uso: cat <nome_arquivo>\n");
+        return;
+    }
+
+    const char* file_name = argv[1];
+
+    FsNode* node = find_child(current_dir, file_name);
+    if(!node){
+        printf("cat: Arquivo '%s' nao encontrado\n", file_name);
+        return;
+    }
+
+    if(node->type == NODE_DIR){
+        printf("cat: '%s' nao e um arquivo\n", file_name);
+        return;
+    }
+
+    if(!node->fcb){
+        printf("cat: Arquivo '%s' nao possui FCB\n", file_name);
+        return;
+    }
+
+    if(!node->fcb->content){
+         // Arquivo vazio
+        node->fcb->accessed_at = time(NULL);
+        return;
+    }
+
+    printf("%s\n", node->fcb->content);
+    node->fcb->accessed_at = time(NULL);
 }
     
 static void handle_command(int argc, char** argv){
@@ -420,6 +525,10 @@ static void handle_command(int argc, char** argv){
         cmd_cd(argc, argv); 
     } else if (strcmp(cmd, "touch") == 0) {
         cmd_touch(argc, argv);
+    } else if (strcmp(cmd, "write") == 0) {
+    cmd_write(argc, argv);
+    } else if (strcmp(cmd, "cat") == 0) {
+    cmd_cat(argc, argv);
     }else {
         printf("Comando desconhecido: %s\n", cmd);
         printf("Digite 'help' para ver a lista de comandos disponiveis.\n");
