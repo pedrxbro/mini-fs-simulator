@@ -212,6 +212,8 @@ static void cmd_help(){
     printf("  help            - Mostra comandos disponíveis\n");
     printf("  pwd             - Mostra o caminho do diretorio atual\n");
     printf("  mkdir <dir>     - Cria um novo diretorio no diretório atual\n");
+    printf("  ls [name]       - Lista o conteudo do diretorio atual\n");
+    printf("  cd [path]       - Altera o diretório atual\n");
     printf("  exit            - Sai do simulador\n");
 }
 
@@ -251,6 +253,78 @@ static void cmd_mkdir(int argc, char** argv){
     add_child(current_dir, new_dir); // Adiciona ao diretório atual
 }
 
+static void cmd_ls(int argc, char** argv){
+    FsNode* target = current_dir;
+
+    // Se um nome for fornecido, tenta encontrar esse diretório
+    if (argc >= 2){
+        const char* name = argv[1];
+
+       if (strcmp(name, ".") == 0){
+           // Já está no diretório atual
+       } else if (strcmp(name, "..") == 0) { // Sair para pasta pai
+            if (current_dir->parent){
+            target = current_dir->parent;
+            }
+         } else {
+            FsNode* child = find_child(current_dir, name);
+            if (!child){
+                printf("Erro: Diretorio ou arquivo '%s' nao encontrado\n", name);
+                return;
+            }
+            target = child;
+        }
+    }
+
+    if (target->type == NODE_FILE){
+        // Mostra somente o nome se for um arquivo
+        printf("%s\n", target->name);
+        return;
+    }
+
+    // Lista os filhos do diretório
+    FsNode* child = target->first_child;
+    while(child){
+        if (child->type == NODE_DIR){
+            printf("%s/\n", child->name); // Ganha uma barra para identificar como diretório
+        } else {
+            printf("%s\n", child->name); // Arquivo normal
+        }
+        child = child->next_sibling;
+    }
+}
+
+// Mudar diretório 
+static void cmd_cd(int argc, char** argv){
+    if (argc < 2){
+        // Sem argumento, volta para a raíz
+        current_dir = root;
+        return;
+    }
+
+    // Pega o caminho fornecido
+    const char* path = argv[1];
+
+    if (strcmp(path, "/") == 0){
+        current_dir = root; // Vai para raíz
+        return;
+    } else if (strcmp(path, ".") == 0){
+        // Fica no diretório atual
+    } else if (strcmp(path, "..") == 0){
+        if (current_dir->parent){
+            current_dir  = current_dir->parent; // Sobe para o pai
+        }
+        return;
+    } else {
+        FsNode* child = find_child(current_dir, path);
+        if(!child || child->type != NODE_DIR){ 
+            printf("Erro: Diretorio '%s' nao encontrado\n", path);
+            return;
+        }
+        current_dir  = child; // Muda para o diretório encontrado
+    }
+}
+    
 static void handle_command(int argc, char** argv){
     const char* cmd = argv[0];
 
@@ -260,7 +334,11 @@ static void handle_command(int argc, char** argv){
         cmd_pwd();
     } else if (strcmp(cmd, "mkdir") == 0){
         cmd_mkdir(argc, argv);
-    } else {
+    }else if (strcmp(cmd, "ls") == 0){
+        cmd_ls(argc, argv);
+    }else if (strcmp(cmd, "cd") == 0){  
+        cmd_cd(argc, argv); 
+    }else {
         printf("Comando desconhecido: %s\n", cmd);
         printf("Digite 'help' para ver a lista de comandos disponiveis.\n");
     }
