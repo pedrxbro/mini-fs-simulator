@@ -26,8 +26,9 @@ FCB* create_fcb(const char* name, FileType type){
     fcb->accessed_at = now;
 
     fcb->inode = next_inode++;
-    fcb->permissions = 0644;        // (rw-r--r--) por enquanto
-    fcb->content = NULL;            // Conteúdo vazio
+    fcb->permissions = 0644;                   // (rw-r--r--) por enquanto
+    fcb->owner = fs_current_user_class;        // proprietário padrão
+    fcb->content = NULL;                       // Conteúdo vazio
 
     return fcb;
 }

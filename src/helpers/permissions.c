@@ -79,36 +79,39 @@ void perms_to_string(unsigned int perms, char* buffer, size_t size){
 
 
 // Retorna apenas os bits de permissão relevantes para a classe do usuário
-static unsigned int perms_class_bits(unsigned int perms, UserClass user_class){
-    switch(user_class){
-        case USER_OWNER:
-            return (perms >> 6) & 0x7; // bits 6-8
-        case USER_GROUP:
-            return (perms >> 3) & 0x7; // bits 3-5
-        case USER_OTHER:
-            return (perms     ) & 0x7; // bits 0-2
-        default:
-            return 0;
+static unsigned int perms_effective_bits(const FCB* fcb){
+    unsigned int owner_bits = (fcb->permissions >> 6) & 0x7;
+    //unsigned int group_bits = (fcb->permissions >> 3) & 0x7;
+    unsigned int other_bits = (fcb->permissions     ) & 0x7;
+
+    // Se for dono, retorna os bits do dono
+    if(fs_current_user_class == fcb->owner){
+        return owner_bits;
     }
+
+    // Não tratando GRUPO ainda
+
+    // Retorna os bits de outros
+    return other_bits;
 }
 
 // Verifica permissões de leitura para o usuário atual
 int perms_can_read(const FCB* fcb){
     if(!fcb) return 0;
-    unsigned int bits = perms_class_bits(fcb->permissions, fs_current_user_class);
+    unsigned int bits = perms_effective_bits(fcb);
     return (bits & PERM_READ) != 0;
 }
 
 // Verifica permissões de escrita para o usuário atual
 int perms_can_write(const FCB* fcb){
     if(!fcb) return 0;
-    unsigned int bits = perms_class_bits(fcb->permissions, fs_current_user_class);
+    unsigned int bits = perms_effective_bits(fcb);
     return (bits & PERM_WRITE) != 0;
 }
 
 // Verifica permissões de execução para o usuário atual
 int perms_can_exec(const FCB* fcb){
     if(!fcb) return 0;
-    unsigned int bits = perms_class_bits(fcb->permissions, fs_current_user_class);
+    unsigned int bits = perms_effective_bits(fcb);
     return (bits & PERM_EXEC) != 0;
 }

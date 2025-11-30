@@ -49,17 +49,25 @@ void cmd_mkdir(int argc, char** argv){
 void cmd_ls(int argc, char** argv){
     FsNode* target = fs_current_dir;
 
-    // Se um nome for fornecido, tenta encontrar esse diretório
-    if (argc >= 2){
-        const char* name = argv[1];
+    int long_format = 0;
+    int arg_index   = 1;
 
-       if (strcmp(name, ".") == 0){
-           // Já está no diretório atual
-       } else if (strcmp(name, "..") == 0) { // Sair para pasta pai
+    if (argc >= 2 && strcmp(argv[1], "-l") == 0){
+        long_format = 1;
+        arg_index   = 2;
+    }
+
+    // Se um nome for fornecido, tenta encontrar esse diretório
+    if (argc > arg_index){
+        const char* name = argv[arg_index];
+
+        if (strcmp(name, ".") == 0){
+            // Já está no diretório atual
+        } else if (strcmp(name, "..") == 0) { // Sair para pasta pai
             if (fs_current_dir->parent){
-            target = fs_current_dir->parent;
+                target = fs_current_dir->parent;
             }
-         } else {
+        } else {
             FsNode* child = fs_find_child(fs_current_dir, name);
             if (!child){
                 printf("ls: Diretorio ou arquivo '%s' nao encontrado\n", name);
@@ -70,18 +78,47 @@ void cmd_ls(int argc, char** argv){
     }
 
     if (target->type == NODE_FILE){
-        // Mostra somente o nome se for um arquivo
-        printf("%s\n", target->name);
+        // Se for um arquivo e tiver formato longo, mostra permissões e tamanho
+        if(long_format && target->fcb){
+            char perms[10];
+            perms_to_string(target->fcb->permissions, perms, sizeof(perms));
+            
+            const char* owner_name = "unknown";
+            switch (target->fcb->owner) {
+                case USER_OWNER: owner_name = "owner"; break;
+                case USER_GROUP: owner_name = "group"; break;
+                case USER_OTHER: owner_name = "other"; break;
+            }
+
+            printf("%s %s %zu %s\n", perms, owner_name, target->fcb->size, target->name);
+        }
+        else {
+            // Mostra somente o nome
+            printf("%s\n", target->name);
+        }
         return;
     }
 
     // Lista os filhos do diretório
     FsNode* child = target->first_child;
     while(child){
-        if (child->type == NODE_DIR){
-            printf("%s/\n", child->name); // Ganha uma barra para identificar como diretório
+        if(long_format && child->fcb){
+            char perms[10];
+            perms_to_string(child->fcb->permissions, perms, sizeof(perms));
+            
+            const char* owner_name = "unknown";
+            switch (child->fcb->owner) {
+                case USER_OWNER: owner_name = "owner"; break;
+                case USER_GROUP: owner_name = "group"; break;
+                case USER_OTHER: owner_name = "other"; break;
+            }
+            printf("%s %s %zu %s\n", perms, owner_name, child->fcb->size, child->name);
         } else {
-            printf("%s\n", child->name); // Arquivo normal
+            if (child->type == NODE_DIR){
+                printf("%s/\n", child->name); // Ganha uma barra para identificar como diretório
+            } else {
+                printf("%s\n", child->name); // Arquivo normal
+            }
         }
         child = child->next_sibling;
     }
@@ -304,8 +341,13 @@ void cmd_cp(int argc, char** argv){
         return;
     }
 
+    if(!perms_can_read(src->fcb)){
+        printf("cp: Permissão negada para ler o arquivo '%s'\n", src_name);
+        return;
+    }
+
     if(fs_find_child(fs_current_dir, dst_name)){
-        printf("cp: Não foi possível criar arquivi. Arquivo de destino '%s' ja existe\n", dst_name);
+        printf("cp: Não foi possível criar arquivo. Arquivo de destino '%s' ja existe\n", dst_name);
         return;
     }
 
@@ -366,6 +408,11 @@ void cmd_mv(int argc, char** argv){
         return;
     }
 
+    if(node->fcb && !perms_can_write(node->fcb)){
+        printf("mv: Permissão negada para renomear o arquivo '%s'\n", old_name);
+        return;
+    }
+
     // Renomeia
     strncpy(node->name, new_name, MAX_NAME_LEN -1);
     node->name[MAX_NAME_LEN -1] = '\0';
@@ -395,6 +442,11 @@ void cmd_rm(int argc, char** argv){
 
     if(node->type == NODE_DIR){
         printf("rm: '%s' nao e um arquivo\n", file_name);
+        return;
+    }
+
+    if (node->fcb && !perms_can_write(node->fcb)) {
+        printf("rm: Permissao negada para excluir '%s'\n", file_name);
         return;
     }
 

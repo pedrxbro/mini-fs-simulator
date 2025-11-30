@@ -20,6 +20,13 @@ typedef enum {
     FILETYPE_PROGRAM
 } FileType;
 
+// Usuários
+typedef enum {
+    USER_OWNER,
+    USER_GROUP,
+    USER_OTHER
+} UserClass;
+
 typedef struct FCB {
     char name[MAX_NAME_LEN];
     size_t  size;
@@ -31,6 +38,7 @@ typedef struct FCB {
 
     int inode;                  // Identificador único do nó no sistema de arquivos
     unsigned int permissions;   // Permissões de acesso
+    UserClass owner;            // Classe do usuário proprietário
 
     char* content;              // Ponteiro para o conteúdo do arquivo na memória
 } FCB;
@@ -46,12 +54,6 @@ typedef struct FsNode {
     FCB* fcb;                    // Ponteiro para o FCB (se for arquivo)
 } FsNode;
 
-// Usuários
-typedef enum {
-    USER_OWNER,
-    USER_GROUP,
-    USER_OTHER
-} UserClass;
 
 extern FsNode* fs_root;
 extern FsNode* fs_current_dir;
