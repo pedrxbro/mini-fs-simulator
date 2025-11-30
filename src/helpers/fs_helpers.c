@@ -5,6 +5,7 @@
 #include "fs.h"
 #include "fs_helpers.h"
 #include "fcb_helpers.h"
+#include "blocks.h"
 
 
 
@@ -111,8 +112,9 @@ static void fs_free_tree_internal(FsNode* node) {
     }
 
     if (node->fcb) {
+        blocks_free_for_file(node->fcb);
         if (node->fcb->content) {
-        free(node->fcb->content);
+            free(node->fcb->content);
     }
     free(node->fcb);
 }

@@ -28,6 +28,15 @@ FCB* create_fcb(const char* name, FileType type){
     fcb->inode = next_inode++;
     fcb->permissions = 0644;                   // (rw-r--r--) por enquanto
     fcb->owner = fs_current_user_class;        // proprietário padrão
+
+    fcb->block_count = 0;                      // Nenhum bloco alocado
+    for (int i = 0; i < FCB_MAX_BLOCKS; i++)
+    {
+        fcb->blocks[i] = -1;                     // Inicializa todos os blocos como não alocados
+    }
+    
+
+
     fcb->content = NULL;                       // Conteúdo vazio
 
     return fcb;

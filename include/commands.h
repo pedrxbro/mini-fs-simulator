@@ -14,5 +14,6 @@ void cmd_rm(int argc, char** argv);
 void cmd_chmod(int argc, char** argv);
 void cmd_user(int argc, char** argv);
 void cmd_whoami(void);
+void cmd_stat(int argc, char** argv);
 
 #endif

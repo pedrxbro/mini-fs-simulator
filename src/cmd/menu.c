@@ -19,6 +19,7 @@ void cmd_help(void) {
     printf("  chmod <perms> <file>     - Altera as permissões de um arquivo\n");
     printf("  user <owner|group|other> - Altera o usuario atual da simulacao\n");
     printf("  whoami                   - Mostra o usuário atual\n");
+    printf("  stat <file>              - Mostra metadados e blocos do arquivo\n");
     printf("  exit                     - Sai do simulador\n");
 }
 
@@ -54,6 +55,8 @@ void cmd_handle(int argc, char** argv) {
         cmd_user(argc, argv);
     } else if (strcmp(cmd, "whoami") == 0) {
         cmd_whoami();
+    } else if (strcmp(cmd, "stat") == 0) {
+        cmd_stat(argc, argv);
     } else {
         printf("Comando desconhecido: %s\n", cmd);
         printf("Digite 'help' para ver a lista de comandos disponiveis.\n");

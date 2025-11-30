@@ -8,6 +8,7 @@
 #include "fcb_helpers.h"
 #include "commands.h"
 #include "permissions.h"
+#include "blocks.h"
 
 
 // Diretório atual 
@@ -264,6 +265,10 @@ void cmd_write(int argc, char** argv){
 
     node->fcb->content = buffer;
     node->fcb->size = total_len;
+
+    if (blocks_alloc_for_file(node->fcb, node->fcb->content, node->fcb->size) != 0) {
+        printf("write: Falha ao alocar blocos para '%s' (disco cheio ou arquivo muito grande)\n", file_name);
+    }
 
     time_t now = time(NULL);
     node->fcb->modified_at = now;
@@ -532,4 +537,52 @@ void cmd_chmod(int argc, char** argv){
     char perm_str[10];
     perms_to_string(perms, perm_str, sizeof(perm_str));
     printf("Permissoes de '%s' alteradas para %s \n", file_name, perm_str);
+}
+
+void cmd_stat(int argc, char** argv){
+    if(argc < 2){
+        printf("Uso: stat <nome_arquivo>\n");
+        return;
+    }
+
+    const char* file_name = argv[1];
+
+    FsNode* node = fs_find_child(fs_current_dir, file_name);
+    if(!node){
+        printf("stat: Arquivo '%s' nao encontrado\n", file_name);
+        return;
+    }
+    if (node->type == NODE_DIR){
+        printf("stat: '%s' nao e um arquivo\n", file_name);
+        return;
+    }
+
+    if(!node->fcb){
+        printf("stat: Arquivo '%s' nao possui FCB\n", file_name);
+        return;
+    }
+
+    FCB* fcb = node->fcb;
+
+    char perms[10];
+    perms_to_string(fcb->permissions, perms, sizeof(perms));
+
+    const char* owner_name = "unknown";
+    switch (fcb->owner){
+        case USER_OWNER: owner_name = "owner"; break;
+        case USER_GROUP: owner_name = "group"; break;
+        case USER_OTHER: owner_name = "other"; break;
+    }
+
+    printf("  Estatisticas de '%s':\n", file_name);
+    printf("  Tamanho: %zu bytes\n", fcb->size);
+    printf("  Permissoes: %s\n", perms);
+    printf("  Proprietario: %s\n", owner_name);
+    printf("  Inode: %d\n", fcb->inode);
+    printf("  Criado em: %s", ctime(&fcb->created_at));
+    printf("  Modificado em: %s", ctime(&fcb->modified_at));
+    printf("  Ultimo acesso em: %s", ctime(&fcb->accessed_at));
+    printf("  Blocos alocados (%d): ", fcb->block_count);
+
+    blocks_dump_file(fcb);
 }
