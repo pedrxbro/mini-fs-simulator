@@ -379,6 +379,10 @@ void cmd_cp(int argc, char** argv){
         dst->fcb->size = 0;
     }
 
+    if (blocks_alloc_for_file(dst->fcb, dst->fcb->content, dst->fcb->size) != 0) {
+        printf("cp: Falha ao alocar blocos para '%s'\n", dst_name);
+    }
+
     // timestamp do dst
     time_t now = time(NULL);
     dst->fcb->created_at = now;
@@ -585,4 +589,20 @@ void cmd_stat(int argc, char** argv){
     printf("  Blocos alocados (%d): ", fcb->block_count);
 
     blocks_dump_file(fcb);
+}
+
+void cmd_diskinfo(){
+    int total_blocks = 0;
+    int used_blocks  = 0;
+    int free_blocks  = 0;
+
+    blocks_stats(&total_blocks, &used_blocks, &free_blocks);
+
+    size_t capacity_bytes = (size_t)total_blocks * FS_BLOCK_SIZE;
+
+    printf("  Blocos totais: %d\n", total_blocks);
+    printf("  Blocos usados: %d\n", used_blocks);
+    printf("  Blocos livres: %d\n", free_blocks);
+    printf("  Tamanho de bloco: %d bytes\n", FS_BLOCK_SIZE);
+    printf("  Capacidade total aproximada: %zu bytes\n", capacity_bytes);
 }

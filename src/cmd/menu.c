@@ -20,6 +20,7 @@ void cmd_help(void) {
     printf("  user <owner|group|other> - Altera o usuario atual da simulacao\n");
     printf("  whoami                   - Mostra o usuário atual\n");
     printf("  stat <file>              - Mostra metadados e blocos do arquivo\n");
+    printf("  diskinfo                 - Mostra estatisticas do disco simulado\n");
     printf("  exit                     - Sai do simulador\n");
 }
 
@@ -57,6 +58,8 @@ void cmd_handle(int argc, char** argv) {
         cmd_whoami();
     } else if (strcmp(cmd, "stat") == 0) {
         cmd_stat(argc, argv);
+    } else if (strcmp(cmd, "diskinfo") == 0) {
+        cmd_diskinfo();
     } else {
         printf("Comando desconhecido: %s\n", cmd);
         printf("Digite 'help' para ver a lista de comandos disponiveis.\n");
