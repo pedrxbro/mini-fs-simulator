@@ -7,6 +7,7 @@
 #define MAX_NAME_LEN 64
 #define PATH_MAX_LEN 1024
 #define MAX_TOKENS 32
+#define FCB_MAX_BLOCKS 32
 
 typedef enum {
     NODE_DIR,
@@ -39,6 +40,9 @@ typedef struct FCB {
     int inode;                  // Identificador único do nó no sistema de arquivos
     unsigned int permissions;   // Permissões de acesso
     UserClass owner;            // Classe do usuário proprietário
+
+    int blocks[FCB_MAX_BLOCKS]; // Blocos alocados para o arquivo
+    int block_count;           // Número de blocos alocados
 
     char* content;              // Ponteiro para o conteúdo do arquivo na memória
 } FCB;

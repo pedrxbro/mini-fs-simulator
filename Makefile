@@ -10,6 +10,7 @@ SRC = 	src/main.c \
 		src/cmd/menu.c \
 		src/cmd/commands.c \
 		src/helpers/permissions.c \
+		src/helpers/blocks.c
 
 		
 OBJ = $(SRC:.c=.o)
