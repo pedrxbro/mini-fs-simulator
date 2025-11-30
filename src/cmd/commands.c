@@ -7,6 +7,7 @@
 #include "fs_helpers.h"
 #include "fcb_helpers.h"
 #include "commands.h"
+#include "permissions.h"
 
 
 // Diretório atual 
@@ -48,17 +49,25 @@ void cmd_mkdir(int argc, char** argv){
 void cmd_ls(int argc, char** argv){
     FsNode* target = fs_current_dir;
 
-    // Se um nome for fornecido, tenta encontrar esse diretório
-    if (argc >= 2){
-        const char* name = argv[1];
+    int long_format = 0;
+    int arg_index   = 1;
 
-       if (strcmp(name, ".") == 0){
-           // Já está no diretório atual
-       } else if (strcmp(name, "..") == 0) { // Sair para pasta pai
+    if (argc >= 2 && strcmp(argv[1], "-l") == 0){
+        long_format = 1;
+        arg_index   = 2;
+    }
+
+    // Se um nome for fornecido, tenta encontrar esse diretório
+    if (argc > arg_index){
+        const char* name = argv[arg_index];
+
+        if (strcmp(name, ".") == 0){
+            // Já está no diretório atual
+        } else if (strcmp(name, "..") == 0) { // Sair para pasta pai
             if (fs_current_dir->parent){
-            target = fs_current_dir->parent;
+                target = fs_current_dir->parent;
             }
-         } else {
+        } else {
             FsNode* child = fs_find_child(fs_current_dir, name);
             if (!child){
                 printf("ls: Diretorio ou arquivo '%s' nao encontrado\n", name);
@@ -69,18 +78,47 @@ void cmd_ls(int argc, char** argv){
     }
 
     if (target->type == NODE_FILE){
-        // Mostra somente o nome se for um arquivo
-        printf("%s\n", target->name);
+        // Se for um arquivo e tiver formato longo, mostra permissões e tamanho
+        if(long_format && target->fcb){
+            char perms[10];
+            perms_to_string(target->fcb->permissions, perms, sizeof(perms));
+            
+            const char* owner_name = "unknown";
+            switch (target->fcb->owner) {
+                case USER_OWNER: owner_name = "owner"; break;
+                case USER_GROUP: owner_name = "group"; break;
+                case USER_OTHER: owner_name = "other"; break;
+            }
+
+            printf("%s %s %zu %s\n", perms, owner_name, target->fcb->size, target->name);
+        }
+        else {
+            // Mostra somente o nome
+            printf("%s\n", target->name);
+        }
         return;
     }
 
     // Lista os filhos do diretório
     FsNode* child = target->first_child;
     while(child){
-        if (child->type == NODE_DIR){
-            printf("%s/\n", child->name); // Ganha uma barra para identificar como diretório
+        if(long_format && child->fcb){
+            char perms[10];
+            perms_to_string(child->fcb->permissions, perms, sizeof(perms));
+            
+            const char* owner_name = "unknown";
+            switch (child->fcb->owner) {
+                case USER_OWNER: owner_name = "owner"; break;
+                case USER_GROUP: owner_name = "group"; break;
+                case USER_OTHER: owner_name = "other"; break;
+            }
+            printf("%s %s %zu %s\n", perms, owner_name, child->fcb->size, child->name);
         } else {
-            printf("%s\n", child->name); // Arquivo normal
+            if (child->type == NODE_DIR){
+                printf("%s/\n", child->name); // Ganha uma barra para identificar como diretório
+            } else {
+                printf("%s\n", child->name); // Arquivo normal
+            }
         }
         child = child->next_sibling;
     }
@@ -183,7 +221,7 @@ void cmd_write(int argc, char** argv){
     if(!buffer){
         fprintf(stderr, "Erro ao alocar memoria para conteudo do arquivo\n");
         return;
-    }
+    } 
 
     buffer[0] = '\0';
     for (int i = 2; i < argc; i++){
@@ -195,6 +233,7 @@ void cmd_write(int argc, char** argv){
 
     // Verificar se o arquivo já existe
     FsNode* node = fs_find_child(fs_current_dir, file_name);
+
     if(!node){
         // Cria novo arquivo
         node = fs_create_node(file_name, NODE_FILE, fs_current_dir);
@@ -208,6 +247,13 @@ void cmd_write(int argc, char** argv){
         }  
         if (!node->fcb){
             node->fcb = create_fcb(file_name, FILETYPE_TEXT);
+        } else {
+            // Verifica se há permissão de escrita  
+            if(!perms_can_write(node->fcb)){
+                printf("write: Permissão negada para escrever no arquivo '%s'\n", file_name);
+                free(buffer);
+                return;
+            }
         }
     }
 
@@ -241,15 +287,19 @@ void cmd_cat(int argc, char** argv){
     }
 
     if(node->type == NODE_DIR){
-        printf("cat: '%s' nao e um arquivo\n", file_name);
+        printf("cat: '%s' não é um arquivo\n", file_name);
         return;
     }
 
     if(!node->fcb){
-        printf("cat: Arquivo '%s' nao possui FCB\n", file_name);
+        printf("cat: Arquivo '%s' não possui FCB\n", file_name);
         return;
     }
 
+    if(!perms_can_read(node->fcb)){
+        printf("cat: Permissão negada para ler o arquivo '%s'\n", file_name);
+        return;
+    }
     if(!node->fcb->content){
          // Arquivo vazio
         node->fcb->accessed_at = time(NULL);
@@ -291,8 +341,13 @@ void cmd_cp(int argc, char** argv){
         return;
     }
 
+    if(!perms_can_read(src->fcb)){
+        printf("cp: Permissão negada para ler o arquivo '%s'\n", src_name);
+        return;
+    }
+
     if(fs_find_child(fs_current_dir, dst_name)){
-        printf("cp: Não foi possível criar arquivi. Arquivo de destino '%s' ja existe\n", dst_name);
+        printf("cp: Não foi possível criar arquivo. Arquivo de destino '%s' ja existe\n", dst_name);
         return;
     }
 
@@ -353,6 +408,11 @@ void cmd_mv(int argc, char** argv){
         return;
     }
 
+    if(node->fcb && !perms_can_write(node->fcb)){
+        printf("mv: Permissão negada para renomear o arquivo '%s'\n", old_name);
+        return;
+    }
+
     // Renomeia
     strncpy(node->name, new_name, MAX_NAME_LEN -1);
     node->name[MAX_NAME_LEN -1] = '\0';
@@ -385,7 +445,91 @@ void cmd_rm(int argc, char** argv){
         return;
     }
 
+    if (node->fcb && !perms_can_write(node->fcb)) {
+        printf("rm: Permissao negada para excluir '%s'\n", file_name);
+        return;
+    }
+
     // Remove o nó do diretório atual
     fs_remove_child(fs_current_dir, node);
 }
 
+void cmd_whoami(){
+    const char* name = "unknown";
+
+    switch (fs_current_user_class){
+        case USER_OWNER:
+            name = "owner";
+            break;
+        case USER_GROUP:
+            name = "group";
+            break;
+        case USER_OTHER:
+            name = "other";
+            break;
+        default:
+            break;
+    }
+
+    printf("%s\n", name);    
+}
+
+void cmd_user(int argc, char** argv){
+    if (argc < 2){
+        printf("Uso: user <owner|group|other>\n");
+        return;
+    }
+
+    const char* role = argv[1];
+
+    if (strcmp(role, "owner") == 0){
+        fs_current_user_class = USER_OWNER;
+    } else if (strcmp(role, "group") == 0){
+        fs_current_user_class = USER_GROUP;
+    } else if (strcmp(role, "other") == 0){
+        fs_current_user_class = USER_OTHER;
+    } else {
+        printf("user: Usuario desconhecido '%s'\n", role);
+    }
+}
+
+void cmd_chmod(int argc, char** argv){
+    if (argc < 3){
+        printf("Uso: chmod <perms> <file>\n");
+        return;
+    }
+
+    const char* perm_text = argv[1];
+    const char* file_name = argv[2];
+
+    int ok = 0;
+
+    unsigned int perms = perms_parse_numeric(perm_text, &ok);
+
+    if(!ok){
+        printf("chmod: Permissoes invalidas: '%s'\n", perm_text);
+        return;
+    }
+
+    FsNode* node = fs_find_child(fs_current_dir, file_name);
+    if(!node){
+        printf("chmod: Arquivo '%s' nao encontrado\n", file_name);
+        return;
+    }
+
+    if(node->type == NODE_DIR){
+        printf("chmod: '%s' nao e um arquivo\n", file_name);
+        return;
+    }
+
+    if(!node->fcb){
+        printf("chmod: Arquivo '%s' nao possui FCB\n", file_name);
+        return;
+    }
+
+    node->fcb->permissions = perms;
+
+    char perm_str[10];
+    perms_to_string(perms, perm_str, sizeof(perm_str));
+    printf("Permissoes de '%s' alteradas para %s \n", file_name, perm_str);
+}

@@ -5,18 +5,21 @@
 
 void cmd_help(void) {
     printf("Comandos disponiveis:\n");
-    printf("  help                 - Mostra comandos disponíveis\n");
-    printf("  pwd                  - Mostra o caminho do diretorio atual\n");
-    printf("  mkdir <dir>          - Cria um novo diretorio no diretório atual\n");
-    printf("  ls [name]            - Lista o conteudo do diretorio atual\n");
-    printf("  cd [path]            - Altera o diretório atual\n");
-    printf("  touch <file>         - Cria um novo arquivo no diretório atual\n");
-    printf("  write <file> <text>  - Criar/Sobrescrever arquivos com o texto fornecido\n");
-    printf("  cat <file>           - Imprime o conteúdo do arquivo\n");
-    printf("  cp <src> <dst>       - Copia um arquivo\n");
-    printf("  mv <old> <new>       - Renomeia/move um arquivo dentro do diretório atual\n");
-    printf("  rm <file>            - Remove um arquivo\n");
-    printf("  exit                 - Sai do simulador\n");
+    printf("  help                     - Mostra comandos disponíveis\n");
+    printf("  pwd                      - Mostra o caminho do diretorio atual\n");
+    printf("  mkdir <dir>              - Cria um novo diretorio no diretório atual\n");
+    printf("  ls [name]                - Lista o conteudo do diretorio atual\n");
+    printf("  cd [path]                - Altera o diretório atual\n");
+    printf("  touch <file>             - Cria um novo arquivo no diretório atual\n");
+    printf("  write <file> <text>      - Criar/Sobrescrever arquivos com o texto fornecido\n");
+    printf("  cat <file>               - Imprime o conteúdo do arquivo\n");
+    printf("  cp <src> <dst>           - Copia um arquivo\n");
+    printf("  mv <old> <new>           - Renomeia/move um arquivo dentro do diretório atual\n");
+    printf("  rm <file>                - Remove um arquivo\n");
+    printf("  chmod <perms> <file>     - Altera as permissões de um arquivo\n");
+    printf("  user <owner|group|other> - Altera o usuario atual da simulacao\n");
+    printf("  whoami                   - Mostra o usuário atual\n");
+    printf("  exit                     - Sai do simulador\n");
 }
 
 // Essa função será chamada pelo shell
@@ -45,6 +48,12 @@ void cmd_handle(int argc, char** argv) {
         cmd_mv(argc, argv);
     } else if (strcmp(cmd, "rm") == 0) {
         cmd_rm(argc, argv);
+    } else if (strcmp(cmd, "chmod") == 0) {
+        cmd_chmod(argc, argv);
+    } else if (strcmp(cmd, "user") == 0) {
+        cmd_user(argc, argv);
+    } else if (strcmp(cmd, "whoami") == 0) {
+        cmd_whoami();
     } else {
         printf("Comando desconhecido: %s\n", cmd);
         printf("Digite 'help' para ver a lista de comandos disponiveis.\n");
