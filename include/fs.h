@@ -46,8 +46,16 @@ typedef struct FsNode {
     FCB* fcb;                    // Ponteiro para o FCB (se for arquivo)
 } FsNode;
 
+// Usuários
+typedef enum {
+    USER_OWNER,
+    USER_GROUP,
+    USER_OTHER
+} UserClass;
+
 extern FsNode* fs_root;
 extern FsNode* fs_current_dir;
+extern UserClass fs_current_user_class;
 
 // Inicializa o sistema de arquivos em memória
 void fs_init(void);

@@ -7,6 +7,7 @@
 #include "fs_helpers.h"
 #include "fcb_helpers.h"
 #include "commands.h"
+#include "permissions.h"
 
 
 // Diretório atual 
@@ -183,7 +184,7 @@ void cmd_write(int argc, char** argv){
     if(!buffer){
         fprintf(stderr, "Erro ao alocar memoria para conteudo do arquivo\n");
         return;
-    }
+    } 
 
     buffer[0] = '\0';
     for (int i = 2; i < argc; i++){
@@ -195,6 +196,7 @@ void cmd_write(int argc, char** argv){
 
     // Verificar se o arquivo já existe
     FsNode* node = fs_find_child(fs_current_dir, file_name);
+
     if(!node){
         // Cria novo arquivo
         node = fs_create_node(file_name, NODE_FILE, fs_current_dir);
@@ -208,6 +210,13 @@ void cmd_write(int argc, char** argv){
         }  
         if (!node->fcb){
             node->fcb = create_fcb(file_name, FILETYPE_TEXT);
+        } else {
+            // Verifica se há permissão de escrita  
+            if(!perms_can_write(node->fcb)){
+                printf("write: Permissão negada para escrever no arquivo '%s'\n", file_name);
+                free(buffer);
+                return;
+            }
         }
     }
 
@@ -241,15 +250,19 @@ void cmd_cat(int argc, char** argv){
     }
 
     if(node->type == NODE_DIR){
-        printf("cat: '%s' nao e um arquivo\n", file_name);
+        printf("cat: '%s' não é um arquivo\n", file_name);
         return;
     }
 
     if(!node->fcb){
-        printf("cat: Arquivo '%s' nao possui FCB\n", file_name);
+        printf("cat: Arquivo '%s' não possui FCB\n", file_name);
         return;
     }
 
+    if(!perms_can_read(node->fcb)){
+        printf("cat: Permissão negada para ler o arquivo '%s'\n", file_name);
+        return;
+    }
     if(!node->fcb->content){
          // Arquivo vazio
         node->fcb->accessed_at = time(NULL);
@@ -389,3 +402,82 @@ void cmd_rm(int argc, char** argv){
     fs_remove_child(fs_current_dir, node);
 }
 
+void cmd_whoami(){
+    const char* name = "unknown";
+
+    switch (fs_current_user_class){
+        case USER_OWNER:
+            name = "owner";
+            break;
+        case USER_GROUP:
+            name = "group";
+            break;
+        case USER_OTHER:
+            name = "other";
+            break;
+        default:
+            break;
+    }
+
+    printf("%s\n", name);    
+}
+
+void cmd_user(int argc, char** argv){
+    if (argc < 2){
+        printf("Uso: user <owner|group|other>\n");
+        return;
+    }
+
+    const char* role = argv[1];
+
+    if (strcmp(role, "owner") == 0){
+        fs_current_user_class = USER_OWNER;
+    } else if (strcmp(role, "group") == 0){
+        fs_current_user_class = USER_GROUP;
+    } else if (strcmp(role, "other") == 0){
+        fs_current_user_class = USER_OTHER;
+    } else {
+        printf("user: Usuario desconhecido '%s'\n", role);
+    }
+}
+
+void cmd_chmod(int argc, char** argv){
+    if (argc < 3){
+        printf("Uso: chmod <perms> <file>\n");
+        return;
+    }
+
+    const char* perm_text = argv[1];
+    const char* file_name = argv[2];
+
+    int ok = 0;
+
+    unsigned int perms = perms_parse_numeric(perm_text, &ok);
+
+    if(!ok){
+        printf("chmod: Permissoes invalidas: '%s'\n", perm_text);
+        return;
+    }
+
+    FsNode* node = fs_find_child(fs_current_dir, file_name);
+    if(!node){
+        printf("chmod: Arquivo '%s' nao encontrado\n", file_name);
+        return;
+    }
+
+    if(node->type == NODE_DIR){
+        printf("chmod: '%s' nao e um arquivo\n", file_name);
+        return;
+    }
+
+    if(!node->fcb){
+        printf("chmod: Arquivo '%s' nao possui FCB\n", file_name);
+        return;
+    }
+
+    node->fcb->permissions = perms;
+
+    char perm_str[10];
+    perms_to_string(perms, perm_str, sizeof(perm_str));
+    printf("Permissoes de '%s' alteradas para %s \n", file_name, perm_str);
+}

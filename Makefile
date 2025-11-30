@@ -8,7 +8,9 @@ SRC = 	src/main.c \
 		src/helpers/fs_helpers.c \
 		src/helpers/fcb_helpers.c \
 		src/cmd/menu.c \
-		src/cmd/commands.c
+		src/cmd/commands.c \
+		src/helpers/permissions.c \
+
 		
 OBJ = $(SRC:.c=.o)
 BIN = mini_fs

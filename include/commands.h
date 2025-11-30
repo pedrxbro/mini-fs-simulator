@@ -11,5 +11,8 @@ void cmd_cat(int argc, char** argv);
 void cmd_cp(int argc, char** argv);
 void cmd_mv(int argc, char** argv);
 void cmd_rm(int argc, char** argv);
+void cmd_chmod(int argc, char** argv);
+void cmd_user(int argc, char** argv);
+void cmd_whoami(void);
 
 #endif
