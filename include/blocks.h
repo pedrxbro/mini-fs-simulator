@@ -13,5 +13,6 @@ void blocks_shutdown(void);
 int  blocks_alloc_for_file(FCB* fcb, const char* data, size_t len);
 void blocks_free_for_file(FCB* fcb);
 void blocks_dump_file(const FCB* fcb);
+void blocks_stats(int* total_blocks, int* used_blocks, int* free_blocks);
 
 #endif

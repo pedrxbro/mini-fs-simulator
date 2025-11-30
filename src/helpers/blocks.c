@@ -104,3 +104,18 @@ void blocks_dump_file(const FCB* fcb) {
     }
     printf("\n");
 }
+
+void blocks_stats(int* total_blocks, int* used_blocks, int* free_blocks){
+    if(total_blocks) { *total_blocks = FS_MAX_BLOCKS; }
+
+    int used = 0;
+    for (int i = 0; i < FS_MAX_BLOCKS; i++){
+        if(fs_block_used[i]){
+            used++;
+        }
+    }
+
+    if (used_blocks) { *used_blocks = used; }
+
+    if (free_blocks) { *free_blocks = FS_MAX_BLOCKS - used; }
+}
