@@ -6,7 +6,7 @@ Trabalho avaliativo da disciplina de **Sistemas Operacionais**, implementando um
 
 ## 1. Ambiente de execução
 
-### 1.1. Sistema operacional
+### 1.1. - Sistema operacional
 
 O projeto foi desenvolvido e testado em:
 
@@ -14,7 +14,7 @@ O projeto foi desenvolvido e testado em:
 
 > Também funciona em qualquer Linux com GCC, `make` e ferramentas básicas de desenvolvimento instaladas.
 
-### 1.2. Pré-requisito: WSL instalado (para usuários Windows)
+### 1.2 - Pré-requisito: WSL instalado (para usuários Windows)
 
 No Windows 10/11, abra o **PowerShell como Administrador** e execute:
 
@@ -87,7 +87,7 @@ A implementação busca refletir, de forma didática, como um sistema de arquivo
 
 O simulador foi projetado seguindo princípios de **código limpo**, **modularização** e **separação de responsabilidades**, facilitando a leitura, manutenção e evolução do sistema.
 
-### 2.1. Organização modular do código
+### 2.1. - Organização modular do código
 
 O código-fonte está organizado em módulos independentes, cada um responsável por uma parte específica do sistema:
 
@@ -312,7 +312,7 @@ O objetivo é demonstrar, de forma prática, como o sistema operacional controla
 
 ---
 
-### 4.1. Classes de usuários
+### 4.1 - Classes de usuários
 
 O sistema define três classes de usuários:
 
@@ -332,7 +332,7 @@ whoami
 
 ---
 
-### 4.2 Modelo de Permissões RWX
+### 4.2 - Modelo de Permissões RWX
 Cada arquivo possui permissões no formato RWX:
 - **R** (Read) – Permissão para leitura
 - **W** (Write) – Permissão para escrita
@@ -348,7 +348,7 @@ rw-r----- > 640
 ```
 
 ---
-4.3 -  Representação interna das permissões (bitmask)
+### 4.3 -  Representação interna das permissões (bitmask)
 
 Internamente, as permissões são armazenadas como um valor numérico (bitmask), utilizando três bits para cada classe de usuário:
 ```text
@@ -364,7 +364,7 @@ Esse valor é manipulado no código usando operações bitwise, permitindo verif
 
 ---
 
-### 4.3 -  Implementação do comando chmod:
+### 4.4 -  Implementação do comando chmod:
 O comando `chmod` permite alterar as permissões de um arquivo:
 ```bash
 chmod <modo> <arquivo>
