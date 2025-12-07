@@ -585,3 +585,14 @@ Este cenário mostra:
 - Alocação de blocos durante escrita
 - Consumo adicional ao copiar arquivos
 - Atualização das estatísticas globais do disco
+
+---
+### 7. Considerações Finais
+O desenvolvimento deste simulador permitiu aplicar, de forma prática, os seguintes conceitos:
+- Abstração de arquivos e diretórios
+- Estruturas de dados em árvore
+- File Control Blocks (FCB) e inodes simulados
+- Controle de acesso com permissões RWX
+- Gerência de espaço em disco por meio de alocação indexada
+
+Embora simplificado, o simulador fornece uma base sólida para o entendimento do funcionamento interno de um sistema de arquivos real.
