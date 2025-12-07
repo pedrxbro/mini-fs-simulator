@@ -81,7 +81,7 @@ void perms_to_string(unsigned int perms, char* buffer, size_t size){
 // Retorna apenas os bits de permissão relevantes para a classe do usuário
 static unsigned int perms_effective_bits(const FCB* fcb){
     unsigned int owner_bits = (fcb->permissions >> 6) & 0x7;
-    //unsigned int group_bits = (fcb->permissions >> 3) & 0x7;
+    unsigned int group_bits = (fcb->permissions >> 3) & 0x7;
     unsigned int other_bits = (fcb->permissions     ) & 0x7;
 
     // Se for dono, retorna os bits do dono
@@ -89,6 +89,11 @@ static unsigned int perms_effective_bits(const FCB* fcb){
         return owner_bits;
     }
 
+
+    if(fs_current_user_class == USER_GROUP){
+        // Retorna os bits de grupo
+        return group_bits;
+    }
     // Não tratando GRUPO ainda
 
     // Retorna os bits de outros
