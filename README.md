@@ -187,7 +187,7 @@ Esta seção descreve como o simulador implementa, na prática, os principais co
 
 ---
 
-### 3.1. Conceito de arquivo e seus atributos
+### 3.1 - Conceito de arquivo e seus atributos
 
 No simulador, um arquivo é uma entidade lógica composta por:
 
@@ -212,7 +212,7 @@ Esses atributos são acessados e manipulados pelos comandos do sistema, garantin
 
 ---
 
-### 3.2. Operações básicas com arquivos
+### 3.2 - Operações básicas com arquivos
 
 O simulador implementa as principais operações de arquivos:
 
@@ -259,7 +259,7 @@ O simulador implementa as principais operações de arquivos:
 
 ---
 
-### 3.3. Estrutura de diretórios e navegação
+### 3.3 - Estrutura de diretórios e navegação
 
 O simulador utiliza uma estrutura de diretórios hierárquica em forma de árvore.
 
@@ -280,7 +280,7 @@ A estrutura em árvore permite:
 
 ---
 
-### 3.4. Representação do inode simulado
+### 3.4 - Representação do inode simulado
 
 Cada arquivo possui um campo `inode` dentro do seu FCB.
 
@@ -292,7 +292,7 @@ Essa abordagem simula o comportamento real de sistemas de arquivos Unix, onde o 
 
 ---
 
-### 3.5. Relação com os conceitos teóricos da disciplina
+### 3.5 - Relação com os conceitos teóricos da disciplina
 
 As funcionalidades implementadas demonstram, de forma prática:
 
@@ -302,5 +302,94 @@ As funcionalidades implementadas demonstram, de forma prática:
 - A importância do controle de acesso e proteção
 - A gerência de espaço em disco
 
-Cada comando da shell foi pensado para refletir uma operação fundamental estudada teoricamente, tornando o simulador uma ferramenta didática para compreensão dos conceitos de Sistemas Operacionais.
+---
 
+## 4. Mecanismo de Proteção de Acesso e Permissões
+
+O simulador implementa um mecanismo de proteção de acesso baseado em **permissões RWX**, de forma semelhante aos sistemas operacionais Unix-like.
+
+O objetivo é demonstrar, de forma prática, como o sistema operacional controla quem pode acessar, modificar ou executar um arquivo.
+
+---
+
+### 4.1. Classes de usuários
+
+O sistema define três classes de usuários:
+
+- **Owner (proprietário)**: usuário que criou o arquivo
+- **Group (grupo)**: usuários pertencentes ao mesmo grupo lógico
+- **Other (outros)**: quaisquer outros usuários
+
+O usuário atual do sistema pode ser alterado por meio do comando:
+
+```text
+user owner | group | other
+```
+Para exibir o usuário atual:
+```bash
+whoami
+```
+
+---
+
+### 4.2 Modelo de Permissões RWX
+Cada arquivo possui permissões no formato RWX:
+- **R** (Read) – Permissão para leitura
+- **W** (Write) – Permissão para escrita
+- **X** (Execute) – Permissão para execução
+
+As permissões são organizadas em três grupos:
+```text
+Other | Group | Other
+```
+Exemplo:
+```text
+rw-r----- > 640
+```
+
+---
+4.3 -  Representação interna das permissões (bitmask)
+
+Internamente, as permissões são armazenadas como um valor numérico (bitmask), utilizando três bits para cada classe de usuário:
+```text
+R = 4
+W = 2
+X = 1
+```
+Exemplo:
+```text
+rw-r--r-- > 644
+```
+Esse valor é manipulado no código usando operações bitwise, permitindo verificar permissões de forma eficiente.
+
+---
+
+### 4.3 -  Implementação do comando chmod:
+O comando `chmod` permite alterar as permissões de um arquivo:
+```bash
+chmod <modo> <arquivo>
+```
+Exemplo:
+```bash
+chmod 640 relatorio.txt
+```
+O simulador:
+- Converte o modo numérico em bits
+- Atualiza o campo `permissions` do FCB
+- Passa a utilizar as novas permissões nas operações subsequentes
+
+---
+
+### 4.5 - Verificação de permissões durante operações
+
+Antes de executar operações sensíveis, o sistema verifica se o usuário atual possui permissão suficiente:
+
+- Leitura (`cat`) → exige permissão R
+- Escrita (`write`, `cp`, `mv`, `rm`) → exige permissão W
+
+A verificação considera:
+
+1. Se o usuário atual é o proprietário do arquivo → utiliza permissões de *owner*
+2. Caso contrário, se pertence ao grupo → utiliza permissões de *group*
+3. Caso contrário → utiliza permissões de *other*
+Essa lógica garante um controle de acesso consistente e alinhado com o modelo Unix.
