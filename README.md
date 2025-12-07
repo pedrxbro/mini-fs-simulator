@@ -78,3 +78,103 @@ Para sair:
 /$ exit
 Desligando sistema de arquivos
 ```
+
+---
+
+## 2. Design do Sistema e Estrutura de Dados
+
+A implementação busca refletir, de forma didática, como um sistema de arquivos real poderia ser organizado internamente.
+
+O simulador foi projetado seguindo princípios de **código limpo**, **modularização** e **separação de responsabilidades**, facilitando a leitura, manutenção e evolução do sistema.
+
+### 2.1. Organização modular do código
+
+O código-fonte está organizado em módulos independentes, cada um responsável por uma parte específica do sistema:
+
+```text
+src/
+├── cmd/         # Implementação dos comandos da shell
+├── helpers/     # Funções auxiliares (FS, FCB, permissões, blocos)
+├── init/        # Inicialização e encerramento do sistema
+├── shell/       # Loop da shell e parser de comandos
+├── fs.c         # Estado global do sistema de arquivos
+└── main.c       # Ponto de entrada da aplicação
+```
+
+Os arquivos de cabeçalho estão em 'include/'.
+- Baixo acoplamento entre módulos
+- Alta coesão de responsabilidades
+- Facilidade de testes e refatorações
+- Melhor compreensão do fluxo do sistema
+
+---
+
+### 2.2 - Estrutura de diretório em árvore
+
+O sistema de arquivos é representado por uma **árvore de diretórios**, onde cada nó pode representar um diretório ou um arquivo.
+
+Cada nó da árvore é representado pela estrutura `FsNode`:
+
+```c
+typedef struct FsNode {
+    char name[MAX_NAME_LEN];
+    NodeType type;
+
+    struct FsNode* parent;
+    struct FsNode* first_child;
+    struct FsNode* next_sibling;
+
+    FCB* fcb;
+} FsNode;
+```
+
+- **parent**: aponta para o diretório pai
+- **first_child**: aponta para o primeiro filho (em caso de diretório)
+- **next_sibling**: aponta para o próximo irmão
+- **fcb**: ponteiro para o File Control Block (apenas para arquivos)
+
+### 2.3 - Conceito de arquivo e File Control Blcok (FCB)
+Cada arquivo do sistema é representado por um File Control Block (FCB), responsável por armazenar seus metadados.
+
+A estrutura `FCB` é definida da seguinte forma:
+
+```c
+typedef struct FCB {
+    char name[MAX_NAME_LEN];
+    size_t size;
+    FileType type;
+
+    time_t created_at;
+    time_t modified_at;
+    time_t accessed_at;
+
+    int inode;
+    unsigned int permissions;
+    UserClass owner;
+
+    int blocks[FCB_MAX_BLOCKS];
+    int block_count;
+
+    char* content;
+} FCB;
+```
+Informações armazenadas no FCB:
+
+- Nome e tamanho do arquivo
+- Tipo do arquivo
+- Datas de criação, modificação e último acesso
+- Inode simulado (identificador único do arquivo)
+- Permissões de acesso
+- Proprietário do arquivo
+- Lista de blocos alocados no disco
+- Conteúdo do arquivo em memória
+
+### 2.4 - Uso de ponteiros e alocação dinâmica
+
+A implementação faz uso extensivo de ponteiros e alocação dinâmica de memória (malloc e free) para:
+
+- Criar nós do sistema de arquivos (FsNode)
+- Criar e destruir FCBs
+- Gerenciar o conteúdo dos arquivos
+- Simular a alocação e liberação de blocos de disco
+- A liberação de memória é realizada de forma recursiva ao desligar o sistema ou remover arquivos, garantindo que não haja vazamentos de memória durante a execução do simulador.

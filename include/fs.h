@@ -42,7 +42,7 @@ typedef struct FCB {
     UserClass owner;            // Classe do usuário proprietário
 
     int blocks[FCB_MAX_BLOCKS]; // Blocos alocados para o arquivo
-    int block_count;           // Número de blocos alocados
+    int block_count;            // Número de blocos alocados
 
     char* content;              // Ponteiro para o conteúdo do arquivo na memória
 } FCB;
