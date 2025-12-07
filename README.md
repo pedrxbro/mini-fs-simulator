@@ -178,3 +178,129 @@ A implementação faz uso extensivo de ponteiros e alocação dinâmica de memó
 - Gerenciar o conteúdo dos arquivos
 - Simular a alocação e liberação de blocos de disco
 - A liberação de memória é realizada de forma recursiva ao desligar o sistema ou remover arquivos, garantindo que não haja vazamentos de memória durante a execução do simulador.
+
+---
+
+## 3. Operações com Arquivos e Conceitos Teóricos
+
+Esta seção descreve como o simulador implementa, na prática, os principais conceitos teóricos estudados na disciplina de Sistemas Operacionais relacionados à gerência de arquivos.
+
+---
+
+### 3.1. Conceito de arquivo e seus atributos
+
+No simulador, um arquivo é uma entidade lógica composta por:
+
+- Conteúdo
+- Metadados
+- Permissões
+- Associação a blocos de disco
+
+Os atributos de um arquivo são armazenados no **File Control Block (FCB)**, que funciona como uma estrutura centralizadora de informações, de forma equivalente ao inode em sistemas Unix-like.
+
+Entre os atributos simulados destacam-se:
+
+- Nome
+- Tamanho
+- Tipo
+- Datas de criação, modificação e acesso
+- Proprietário
+- Permissões de acesso
+- Blocos de disco associados
+
+Esses atributos são acessados e manipulados pelos comandos do sistema, garantindo consistência e controle sobre os arquivos.
+
+---
+
+### 3.2. Operações básicas com arquivos
+
+O simulador implementa as principais operações de arquivos:
+
+#### Criar arquivos
+- **Comando:** `touch <arquivo>`
+- Cria um novo arquivo no diretório atual
+- Um novo FCB é alocado e inicializado
+- Caso o arquivo já exista, apenas os timestamps são atualizados
+
+#### Escrever em arquivos
+- **Comando:** `write <arquivo> <texto>`
+- Cria ou sobrescreve o conteúdo de um arquivo
+- Atualiza:
+  - Conteúdo
+  - Tamanho
+  - Timestamp de modificação
+- Aciona a alocação de blocos de disco
+
+#### Ler arquivos
+- **Comando:** `cat <arquivo>`
+- Exibe o conteúdo do arquivo
+- Atualiza o timestamp de acesso
+- Valida permissões de leitura antes da operação
+
+#### Copiar arquivos
+- **Comando:** `cp <origem> <destino>`
+- Cria uma cópia do arquivo, incluindo:
+  - Conteúdo
+  - Metadados relevantes
+  - Blocos de disco próprios
+- Demonstra o consumo adicional de espaço em disco
+
+#### Renomear/Mover arquivos
+- **Comando:** `mv <origem> <destino>`
+- Modifica apenas o nome do arquivo
+- Move somente o endereço
+- Mantém inode, permissões e blocos associados
+
+#### Remover arquivos
+- **Comando:** `rm <arquivo>`
+- Remove o nó do sistema de arquivos
+- Libera o FCB associado
+- Libera os blocos de disco alocados
+
+---
+
+### 3.3. Estrutura de diretórios e navegação
+
+O simulador utiliza uma estrutura de diretórios hierárquica em forma de árvore.
+
+#### Diretórios
+- São nós que podem conter outros arquivos ou diretórios
+- Não possuem conteúdo nem FCB
+
+#### Comandos relacionados
+- `mkdir <dir>` → cria um diretório
+- `cd <dir>` → navegação entre diretórios
+- `pwd` → exibe o caminho absoluto
+- `ls` / `ls -l` → lista conteúdo do diretório
+
+A estrutura em árvore permite:
+- Organização lógica do sistema
+- Navegação eficiente
+- Agrupamento de arquivos relacionados
+
+---
+
+### 3.4. Representação do inode simulado
+
+Cada arquivo possui um campo `inode` dentro do seu FCB.
+
+- O inode é um identificador inteiro único
+- É atribuído automaticamente no momento da criação do arquivo
+- Permanece constante durante a vida do arquivo
+
+Essa abordagem simula o comportamento real de sistemas de arquivos Unix, onde o inode identifica o arquivo independentemente do nome ou do diretório em que se encontra.
+
+---
+
+### 3.5. Relação com os conceitos teóricos da disciplina
+
+As funcionalidades implementadas demonstram, de forma prática:
+
+- O conceito de arquivo como uma abstração do sistema operacional
+- A separação entre nome do arquivo e seus metadados
+- O uso de estruturas de dados para gerência de arquivos
+- A importância do controle de acesso e proteção
+- A gerência de espaço em disco
+
+Cada comando da shell foi pensado para refletir uma operação fundamental estudada teoricamente, tornando o simulador uma ferramenta didática para compreensão dos conceitos de Sistemas Operacionais.
+
