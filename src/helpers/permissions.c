@@ -94,7 +94,6 @@ static unsigned int perms_effective_bits(const FCB* fcb){
         // Retorna os bits de grupo
         return group_bits;
     }
-    // Não tratando GRUPO ainda
 
     // Retorna os bits de outros
     return other_bits;
