@@ -426,7 +426,7 @@ O simulador utiliza **alocação indexada de blocos**, onde:
 - Cada arquivo mantém uma lista de índices dos blocos que lhe pertencem
 - Essa lista é armazenada diretamente no **File Control Block (FCB)**
 - Não há necessidade de blocos adjacentes no disco
-    
+
 ---
 
 ### 5.3 - Relação entre FCB e blocos de disco
@@ -457,7 +457,7 @@ A simulação de blocos está integrada às operações do sistema:
 - **`cp`**: cria uma nova alocação independente de blocos para a cópia
 - **`rm`**: libera os blocos ocupados pelo arquivo removido
 - **`stat`**: exibe os blocos associados a um arquivo
-- **`diskinfo`**: exibe estatísticas globais do disco
+- **`df`**: exibe estatísticas globais do disco
 
 Isso permite visualizar o impacto direto das operações no consumo de espaço.
 
@@ -465,7 +465,7 @@ Isso permite visualizar o impacto direto das operações no consumo de espaço.
 
 ### 5.5 - Estatísticas do disco
 
-O comando `diskinfo` exibe informações globais do disco simulado:
+O comando `df` exibe informações globais do disco simulado:
 
 ```text
 Blocos totais: 256
@@ -473,3 +473,115 @@ Blocos usados: 7
 Blocos livres: 249
 Tamanho de bloco: 16 bytes
 Capacidade total aproximada: 4096 bytes
+```
+
+---
+
+## 6. Exemplos de Uso do Simulador e Comparação com Linux
+Podemos comparar o simulador com a utilização de comandos reais de sistemas Linux. Possibilitando evidenciar a similiridade conceitual entre ambos.
+
+---
+
+### 6.1 - Comandos disponíveis
+
+O simulador implementa um conjunto de comandos inspirados em sistemas Unix/Linux:
+
+| Comando Linux | Comando Mini-FS | Descrição |
+|--------------|-----------------|-----------|
+| `pwd` | `pwd` | Mostra o diretório atual |
+| `ls` | `ls` | Lista arquivos e diretórios |
+| `ls -l` | `ls -l` | Lista com permissões e metadados |
+| `cd` | `cd` | Navegação entre diretórios |
+| `mkdir` | `mkdir` | Criação de diretórios |
+| `touch` | `touch` | Criação de arquivos |
+| `echo` | `write` | Escrever em arquivos |
+| `cat` | `cat` | Leitura de arquivos |
+| `cp` | `cp` | Cópia de arquivos |
+| `mv` | `mv` | Renomear arquivos |
+| `rm` | `rm` | Remover arquivos |
+| `chmod` | `chmod` | Alterar permissões |
+| `whoami` | `whoami` | Exibir usuário atual |
+| `stat` | `stat` | Exibir metadados do arquivo |
+| `df` | `df` | Estatísticas do disco |
+
+---
+
+### 6.2 - Exemplo completo de uso
+
+```bash
+Inicializando sistema de arquivos...
+/$ user owner
+/$ mkdir home
+/$ cd home
+/home$ write notas.txt "Trabalho de Sistemas Operacionais"
+/home$ chmod 640 notas.txt
+Permissoes de 'notas.txt' alteradas para rw-r----- 
+/home$ ls -l
+rw-r----- owner 35 notas.txt
+
+/home$ user group
+/home$ cat notas.txt
+"Trabalho de Sistemas Operacionais"
+/home$ write notas.txt "tentativa de edicao"
+write: Permissão negada para escrever no arquivo 'notas.txt'
+
+/home$ user other
+/home$ cat notas.txt
+cat: Permissão negada para ler o arquivo 'notas.txt'
+/home$ exit
+Desligando sistema de arquivos
+```
+O exemplo acima mostra:
+- Criação e escrita de arquivos
+- Alteração de permissões
+- Controle de acesso por classe de usuário
+
+### 6.3 - Demonstração do uso de blocos de disco
+Status do disco:
+```bash
+/$ df
+```
+Saída:
+```text
+Blocos totais: 256
+Blocos usados: 0
+Blocos livres: 256
+Tamanho de bloco: 16 bytes
+Capacidade total aproximada: 4096 bytes
+```
+
+Escrever em arquivo e exibir propriedades
+```bash
+/$ write a.txt "aaaaaaaaaaaaaaaaaaaaaaaa"
+stat a.txt
+```
+Saída:
+```text
+Estatisticas de 'a.txt':
+Tamanho: 26 bytes
+Permissoes: rw-r--r--
+Proprietario: owner
+Inode: 1
+Criado em: Sun Dec  7 15:08:52 2025
+Modificado em: Sun Dec  7 15:08:52 2025
+Ultimo acesso em: Sun Dec  7 15:08:52 2025
+Blocos alocados (2): blocos: 0 1
+```
+Duplicar arquivo:
+```bash
+/$ cp a.txt b.txt
+/$ df
+```
+Saída:
+```text
+Blocos totais: 256
+Blocos usados: 4
+Blocos livres: 252
+Tamanho de bloco: 16 bytes
+Capacidade total aproximada: 4096 bytes
+```
+
+Este cenário mostra:
+- Alocação de blocos durante escrita
+- Consumo adicional ao copiar arquivos
+- Atualização das estatísticas globais do disco
