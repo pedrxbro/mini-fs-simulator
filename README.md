@@ -392,4 +392,84 @@ A verificação considera:
 1. Se o usuário atual é o proprietário do arquivo → utiliza permissões de *owner*
 2. Caso contrário, se pertence ao grupo → utiliza permissões de *group*
 3. Caso contrário → utiliza permissões de *other*
+
 Essa lógica garante um controle de acesso consistente e alinhado com o modelo Unix.
+
+---
+
+## 5. Simulação da Alocação de Blocos em Disco
+
+Além da estrutura lógica de arquivos e diretórios, o simulador implementa uma **simulação da alocação de espaço em disco**, permitindo demonstrar conceitos fundamentais de gerência de armazenamento.
+
+---
+
+### 5.1 - Modelo de disco simulado
+
+O disco é representado inteiramente em memória por meio de estruturas estáticas:
+
+- Um vetor de blocos de tamanho fixo
+- Um vetor auxiliar indicando quais blocos estão livres ou ocupados
+
+Cada bloco possui:
+
+- Tamanho fixo (definido em bytes)
+- Índice único dentro do disco
+
+Essa abordagem permite simular a ocupação de espaço físico de forma controlada e previsível.
+
+---
+
+### 5.2 - Tipo de alocação implementada
+
+O simulador utiliza **alocação indexada de blocos**, onde:
+
+- Cada arquivo mantém uma lista de índices dos blocos que lhe pertencem
+- Essa lista é armazenada diretamente no **File Control Block (FCB)**
+- Não há necessidade de blocos adjacentes no disco
+    
+---
+
+### 5.3 - Relação entre FCB e blocos de disco
+
+Dentro do FCB, a alocação de blocos é representada pelos campos:
+
+- `blocks[]`: vetor com os índices dos blocos alocados
+- `block_count`: quantidade de blocos associados ao arquivo
+
+Ao escrever em um arquivo:
+- O sistema calcula quantos blocos são necessários
+- Blocos livres são identificados
+- O conteúdo é distribuído entre esses blocos
+- O mapeamento é registrado no FCB
+
+Ao remover um arquivo:
+- Os blocos associados são liberados
+- Os índices são removidos do FCB
+- O espaço volta a ficar disponível no disco
+
+---
+
+### 5.4 - Integração com operações de arquivos
+
+A simulação de blocos está integrada às operações do sistema:
+
+- **`write`**: aloca novos blocos conforme o tamanho do conteúdo
+- **`cp`**: cria uma nova alocação independente de blocos para a cópia
+- **`rm`**: libera os blocos ocupados pelo arquivo removido
+- **`stat`**: exibe os blocos associados a um arquivo
+- **`diskinfo`**: exibe estatísticas globais do disco
+
+Isso permite visualizar o impacto direto das operações no consumo de espaço.
+
+---
+
+### 5.5 - Estatísticas do disco
+
+O comando `diskinfo` exibe informações globais do disco simulado:
+
+```text
+Blocos totais: 256
+Blocos usados: 7
+Blocos livres: 249
+Tamanho de bloco: 16 bytes
+Capacidade total aproximada: 4096 bytes
