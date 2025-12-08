@@ -1,0 +1,598 @@
+# Mini File System Simulator (Mini-FS)
+
+Trabalho avaliativo da disciplina de **Sistemas Operacionais**, implementando um mini sistema de arquivos em memória com shell própria, FCBs, permissões (RWX) e simulação de blocos de disco.
+
+---
+
+## 1. Ambiente de execução
+
+### 1.1. - Sistema operacional
+
+O projeto foi desenvolvido e testado em:
+
+- **Windows 10/11** utilizando o **WSL2 (Windows Subsystem for Linux)** com distribuição **Ubuntu**.
+
+> Também funciona em qualquer Linux com GCC, `make` e ferramentas básicas de desenvolvimento instaladas.
+
+### 1.2 - Pré-requisito: WSL instalado (para usuários Windows)
+
+No Windows 10/11, abra o **PowerShell como Administrador** e execute:
+
+```powershell
+wsl --install
+```
+Isso irá instalar o WSL, prossiga com as instruções de instalação.
+
+### 1.3 - Clonar o repositório
+Dentro do WSL, entre em uma pasta e clone o repositório:
+
+```bash
+cd /mnt/c #Para acessar o Disco Local C do Windows
+mkdir Projetos
+cd Projetos
+```
+Clonar o repositório:
+```bash
+git clone https://github.com/pedrxbro/mini-fs-simulator.git
+cd mini-fs-simulator
+```
+
+### 1.4 - Preparar o WSL
+Dentro da pasta do projeto, atualize os pacotes da distro e instale as ferramentas de compilação
+
+- Atualizar lista de pacotes
+```bash
+sudo apt update
+sudo apt upgrade -y
+```
+- Instalar compiladores e ferramentas de build
+``` bash
+sudo apt install -y build-essential make gcc
+```
+
+### 1.5 - Compilar o projeto
+Na raíz, execute:
+```bash
+make clean
+make all
+```
+Se tudo estiver correto, o comando *make* irá gerar um binário chamado:
+```bash
+mini_fs 
+```
+
+### 1.6 - Executar o projeto
+Ainda na raíz, execute o binário, pelo comando:
+```bash
+./mini_fs
+```
+Terá um prompt como:
+```bash
+Inicializando sistema de arquivos...
+/$
+``` 
+A partir daqui, é possível utilizar os comandos implementados no simulador.
+
+Para sair:
+```bash
+/$ exit
+Desligando sistema de arquivos
+```
+
+---
+
+## 2. Design do Sistema e Estrutura de Dados
+
+A implementação busca refletir, de forma didática, como um sistema de arquivos real poderia ser organizado internamente.
+
+O simulador foi projetado seguindo princípios de **código limpo**, **modularização** e **separação de responsabilidades**, facilitando a leitura, manutenção e evolução do sistema.
+
+### 2.1. - Organização modular do código
+
+O código-fonte está organizado em módulos independentes, cada um responsável por uma parte específica do sistema:
+
+```text
+src/
+├── cmd/         # Implementação dos comandos da shell
+├── helpers/     # Funções auxiliares (FS, FCB, permissões, blocos)
+├── init/        # Inicialização e encerramento do sistema
+├── shell/       # Loop da shell e parser de comandos
+├── fs.c         # Estado global do sistema de arquivos
+└── main.c       # Ponto de entrada da aplicação
+```
+
+Os arquivos de cabeçalho estão em 'include/'.
+- Baixo acoplamento entre módulos
+- Alta coesão de responsabilidades
+- Facilidade de testes e refatorações
+- Melhor compreensão do fluxo do sistema
+
+---
+
+### 2.2 - Estrutura de diretório em árvore
+
+O sistema de arquivos é representado por uma **árvore de diretórios**, onde cada nó pode representar um diretório ou um arquivo.
+
+Cada nó da árvore é representado pela estrutura `FsNode`:
+
+```c
+typedef struct FsNode {
+    char name[MAX_NAME_LEN];
+    NodeType type;
+
+    struct FsNode* parent;
+    struct FsNode* first_child;
+    struct FsNode* next_sibling;
+
+    FCB* fcb;
+} FsNode;
+```
+
+- **parent**: aponta para o diretório pai
+- **first_child**: aponta para o primeiro filho (em caso de diretório)
+- **next_sibling**: aponta para o próximo irmão
+- **fcb**: ponteiro para o File Control Block (apenas para arquivos)
+
+### 2.3 - Conceito de arquivo e File Control Blcok (FCB)
+Cada arquivo do sistema é representado por um File Control Block (FCB), responsável por armazenar seus metadados.
+
+A estrutura `FCB` é definida da seguinte forma:
+
+```c
+typedef struct FCB {
+    char name[MAX_NAME_LEN];
+    size_t size;
+    FileType type;
+
+    time_t created_at;
+    time_t modified_at;
+    time_t accessed_at;
+
+    int inode;
+    unsigned int permissions;
+    UserClass owner;
+
+    int blocks[FCB_MAX_BLOCKS];
+    int block_count;
+
+    char* content;
+} FCB;
+```
+Informações armazenadas no FCB:
+
+- Nome e tamanho do arquivo
+- Tipo do arquivo
+- Datas de criação, modificação e último acesso
+- Inode simulado (identificador único do arquivo)
+- Permissões de acesso
+- Proprietário do arquivo
+- Lista de blocos alocados no disco
+- Conteúdo do arquivo em memória
+
+### 2.4 - Uso de ponteiros e alocação dinâmica
+
+A implementação faz uso extensivo de ponteiros e alocação dinâmica de memória (malloc e free) para:
+
+- Criar nós do sistema de arquivos (FsNode)
+- Criar e destruir FCBs
+- Gerenciar o conteúdo dos arquivos
+- Simular a alocação e liberação de blocos de disco
+- A liberação de memória é realizada de forma recursiva ao desligar o sistema ou remover arquivos, garantindo que não haja vazamentos de memória durante a execução do simulador.
+
+---
+
+## 3. Operações com Arquivos e Conceitos Teóricos
+
+Esta seção descreve como o simulador implementa, na prática, os principais conceitos teóricos estudados na disciplina de Sistemas Operacionais relacionados à gerência de arquivos.
+
+---
+
+### 3.1 - Conceito de arquivo e seus atributos
+
+No simulador, um arquivo é uma entidade lógica composta por:
+
+- Conteúdo
+- Metadados
+- Permissões
+- Associação a blocos de disco
+
+Os atributos de um arquivo são armazenados no **File Control Block (FCB)**, que funciona como uma estrutura centralizadora de informações, de forma equivalente ao inode em sistemas Unix-like.
+
+Entre os atributos simulados destacam-se:
+
+- Nome
+- Tamanho
+- Tipo
+- Datas de criação, modificação e acesso
+- Proprietário
+- Permissões de acesso
+- Blocos de disco associados
+
+Esses atributos são acessados e manipulados pelos comandos do sistema, garantindo consistência e controle sobre os arquivos.
+
+---
+
+### 3.2 - Operações básicas com arquivos
+
+O simulador implementa as principais operações de arquivos:
+
+#### Criar arquivos
+- **Comando:** `touch <arquivo>`
+- Cria um novo arquivo no diretório atual
+- Um novo FCB é alocado e inicializado
+- Caso o arquivo já exista, apenas os timestamps são atualizados
+
+#### Escrever em arquivos
+- **Comando:** `write <arquivo> <texto>`
+- Cria ou sobrescreve o conteúdo de um arquivo
+- Atualiza:
+  - Conteúdo
+  - Tamanho
+  - Timestamp de modificação
+- Aciona a alocação de blocos de disco
+
+#### Ler arquivos
+- **Comando:** `cat <arquivo>`
+- Exibe o conteúdo do arquivo
+- Atualiza o timestamp de acesso
+- Valida permissões de leitura antes da operação
+
+#### Copiar arquivos
+- **Comando:** `cp <origem> <destino>`
+- Cria uma cópia do arquivo, incluindo:
+  - Conteúdo
+  - Metadados relevantes
+  - Blocos de disco próprios
+- Demonstra o consumo adicional de espaço em disco
+
+#### Renomear/Mover arquivos
+- **Comando:** `mv <origem> <destino>`
+- Modifica apenas o nome do arquivo
+- Move somente o endereço
+- Mantém inode, permissões e blocos associados
+
+#### Remover arquivos
+- **Comando:** `rm <arquivo>`
+- Remove o nó do sistema de arquivos
+- Libera o FCB associado
+- Libera os blocos de disco alocados
+
+---
+
+### 3.3 - Estrutura de diretórios e navegação
+
+O simulador utiliza uma estrutura de diretórios hierárquica em forma de árvore.
+
+#### Diretórios
+- São nós que podem conter outros arquivos ou diretórios
+- Não possuem conteúdo nem FCB
+
+#### Comandos relacionados
+- `mkdir <dir>` → cria um diretório
+- `cd <dir>` → navegação entre diretórios
+- `pwd` → exibe o caminho absoluto
+- `ls` / `ls -l` → lista conteúdo do diretório
+
+A estrutura em árvore permite:
+- Organização lógica do sistema
+- Navegação eficiente
+- Agrupamento de arquivos relacionados
+
+---
+
+### 3.4 - Representação do inode simulado
+
+Cada arquivo possui um campo `inode` dentro do seu FCB.
+
+- O inode é um identificador inteiro único
+- É atribuído automaticamente no momento da criação do arquivo
+- Permanece constante durante a vida do arquivo
+
+Essa abordagem simula o comportamento real de sistemas de arquivos Unix, onde o inode identifica o arquivo independentemente do nome ou do diretório em que se encontra.
+
+---
+
+### 3.5 - Relação com os conceitos teóricos da disciplina
+
+As funcionalidades implementadas demonstram, de forma prática:
+
+- O conceito de arquivo como uma abstração do sistema operacional
+- A separação entre nome do arquivo e seus metadados
+- O uso de estruturas de dados para gerência de arquivos
+- A importância do controle de acesso e proteção
+- A gerência de espaço em disco
+
+---
+
+## 4. Mecanismo de Proteção de Acesso e Permissões
+
+O simulador implementa um mecanismo de proteção de acesso baseado em **permissões RWX**, de forma semelhante aos sistemas operacionais Unix-like.
+
+O objetivo é demonstrar, de forma prática, como o sistema operacional controla quem pode acessar, modificar ou executar um arquivo.
+
+---
+
+### 4.1 - Classes de usuários
+
+O sistema define três classes de usuários:
+
+- **Owner (proprietário)**: usuário que criou o arquivo
+- **Group (grupo)**: usuários pertencentes ao mesmo grupo lógico
+- **Other (outros)**: quaisquer outros usuários
+
+O usuário atual do sistema pode ser alterado por meio do comando:
+
+```text
+user owner | group | other
+```
+Para exibir o usuário atual:
+```bash
+whoami
+```
+
+---
+
+### 4.2 - Modelo de Permissões RWX
+Cada arquivo possui permissões no formato RWX:
+- **R** (Read) – Permissão para leitura
+- **W** (Write) – Permissão para escrita
+- **X** (Execute) – Permissão para execução
+
+As permissões são organizadas em três grupos:
+```text
+Other | Group | Other
+```
+Exemplo:
+```text
+rw-r----- > 640
+```
+
+---
+### 4.3 -  Representação interna das permissões (bitmask)
+
+Internamente, as permissões são armazenadas como um valor numérico (bitmask), utilizando três bits para cada classe de usuário:
+```text
+R = 4
+W = 2
+X = 1
+```
+Exemplo:
+```text
+rw-r--r-- > 644
+```
+Esse valor é manipulado no código usando operações bitwise, permitindo verificar permissões de forma eficiente.
+
+---
+
+### 4.4 -  Implementação do comando chmod:
+O comando `chmod` permite alterar as permissões de um arquivo:
+```bash
+chmod <modo> <arquivo>
+```
+Exemplo:
+```bash
+chmod 640 relatorio.txt
+```
+O simulador:
+- Converte o modo numérico em bits
+- Atualiza o campo `permissions` do FCB
+- Passa a utilizar as novas permissões nas operações subsequentes
+
+---
+
+### 4.5 - Verificação de permissões durante operações
+
+Antes de executar operações sensíveis, o sistema verifica se o usuário atual possui permissão suficiente:
+
+- Leitura (`cat`) → exige permissão R
+- Escrita (`write`, `cp`, `mv`, `rm`) → exige permissão W
+
+A verificação considera:
+
+1. Se o usuário atual é o proprietário do arquivo → utiliza permissões de *owner*
+2. Caso contrário, se pertence ao grupo → utiliza permissões de *group*
+3. Caso contrário → utiliza permissões de *other*
+
+Essa lógica garante um controle de acesso consistente e alinhado com o modelo Unix.
+
+---
+
+## 5. Simulação da Alocação de Blocos em Disco
+
+Além da estrutura lógica de arquivos e diretórios, o simulador implementa uma **simulação da alocação de espaço em disco**, permitindo demonstrar conceitos fundamentais de gerência de armazenamento.
+
+---
+
+### 5.1 - Modelo de disco simulado
+
+O disco é representado inteiramente em memória por meio de estruturas estáticas:
+
+- Um vetor de blocos de tamanho fixo
+- Um vetor auxiliar indicando quais blocos estão livres ou ocupados
+
+Cada bloco possui:
+
+- Tamanho fixo (definido em bytes)
+- Índice único dentro do disco
+
+Essa abordagem permite simular a ocupação de espaço físico de forma controlada e previsível.
+
+---
+
+### 5.2 - Tipo de alocação implementada
+
+O simulador utiliza **alocação indexada de blocos**, onde:
+
+- Cada arquivo mantém uma lista de índices dos blocos que lhe pertencem
+- Essa lista é armazenada diretamente no **File Control Block (FCB)**
+- Não há necessidade de blocos adjacentes no disco
+
+---
+
+### 5.3 - Relação entre FCB e blocos de disco
+
+Dentro do FCB, a alocação de blocos é representada pelos campos:
+
+- `blocks[]`: vetor com os índices dos blocos alocados
+- `block_count`: quantidade de blocos associados ao arquivo
+
+Ao escrever em um arquivo:
+- O sistema calcula quantos blocos são necessários
+- Blocos livres são identificados
+- O conteúdo é distribuído entre esses blocos
+- O mapeamento é registrado no FCB
+
+Ao remover um arquivo:
+- Os blocos associados são liberados
+- Os índices são removidos do FCB
+- O espaço volta a ficar disponível no disco
+
+---
+
+### 5.4 - Integração com operações de arquivos
+
+A simulação de blocos está integrada às operações do sistema:
+
+- **`write`**: aloca novos blocos conforme o tamanho do conteúdo
+- **`cp`**: cria uma nova alocação independente de blocos para a cópia
+- **`rm`**: libera os blocos ocupados pelo arquivo removido
+- **`stat`**: exibe os blocos associados a um arquivo
+- **`df`**: exibe estatísticas globais do disco
+
+Isso permite visualizar o impacto direto das operações no consumo de espaço.
+
+---
+
+### 5.5 - Estatísticas do disco
+
+O comando `df` exibe informações globais do disco simulado:
+
+```text
+Blocos totais: 256
+Blocos usados: 7
+Blocos livres: 249
+Tamanho de bloco: 16 bytes
+Capacidade total aproximada: 4096 bytes
+```
+
+---
+
+## 6. Exemplos de Uso do Simulador e Comparação com Linux
+Podemos comparar o simulador com a utilização de comandos reais de sistemas Linux. Possibilitando evidenciar a similiridade conceitual entre ambos.
+
+---
+
+### 6.1 - Comandos disponíveis
+
+O simulador implementa um conjunto de comandos inspirados em sistemas Unix/Linux:
+
+| Comando Linux | Comando Mini-FS | Descrição |
+|--------------|-----------------|-----------|
+| `pwd` | `pwd` | Mostra o diretório atual |
+| `ls` | `ls` | Lista arquivos e diretórios |
+| `ls -l` | `ls -l` | Lista com permissões e metadados |
+| `cd` | `cd` | Navegação entre diretórios |
+| `mkdir` | `mkdir` | Criação de diretórios |
+| `touch` | `touch` | Criação de arquivos |
+| `echo` | `write` | Escrever em arquivos |
+| `cat` | `cat` | Leitura de arquivos |
+| `cp` | `cp` | Cópia de arquivos |
+| `mv` | `mv` | Renomear arquivos |
+| `rm` | `rm` | Remover arquivos |
+| `chmod` | `chmod` | Alterar permissões |
+| `whoami` | `whoami` | Exibir usuário atual |
+| `stat` | `stat` | Exibir metadados do arquivo |
+| `df` | `df` | Estatísticas do disco |
+
+---
+
+### 6.2 - Exemplo completo de uso
+
+```bash
+Inicializando sistema de arquivos...
+/$ user owner
+/$ mkdir home
+/$ cd home
+/home$ write notas.txt "Trabalho de Sistemas Operacionais"
+/home$ chmod 640 notas.txt
+Permissoes de 'notas.txt' alteradas para rw-r----- 
+/home$ ls -l
+rw-r----- owner 35 notas.txt
+
+/home$ user group
+/home$ cat notas.txt
+"Trabalho de Sistemas Operacionais"
+/home$ write notas.txt "tentativa de edicao"
+write: Permissão negada para escrever no arquivo 'notas.txt'
+
+/home$ user other
+/home$ cat notas.txt
+cat: Permissão negada para ler o arquivo 'notas.txt'
+/home$ exit
+Desligando sistema de arquivos
+```
+O exemplo acima mostra:
+- Criação e escrita de arquivos
+- Alteração de permissões
+- Controle de acesso por classe de usuário
+
+### 6.3 - Demonstração do uso de blocos de disco
+Status do disco:
+```bash
+/$ df
+```
+Saída:
+```text
+Blocos totais: 256
+Blocos usados: 0
+Blocos livres: 256
+Tamanho de bloco: 16 bytes
+Capacidade total aproximada: 4096 bytes
+```
+
+Escrever em arquivo e exibir propriedades
+```bash
+/$ write a.txt "aaaaaaaaaaaaaaaaaaaaaaaa"
+stat a.txt
+```
+Saída:
+```text
+Estatisticas de 'a.txt':
+Tamanho: 26 bytes
+Permissoes: rw-r--r--
+Proprietario: owner
+Inode: 1
+Criado em: Sun Dec  7 15:08:52 2025
+Modificado em: Sun Dec  7 15:08:52 2025
+Ultimo acesso em: Sun Dec  7 15:08:52 2025
+Blocos alocados (2): blocos: 0 1
+```
+Duplicar arquivo:
+```bash
+/$ cp a.txt b.txt
+/$ df
+```
+Saída:
+```text
+Blocos totais: 256
+Blocos usados: 4
+Blocos livres: 252
+Tamanho de bloco: 16 bytes
+Capacidade total aproximada: 4096 bytes
+```
+
+Este cenário mostra:
+- Alocação de blocos durante escrita
+- Consumo adicional ao copiar arquivos
+- Atualização das estatísticas globais do disco
+
+---
+### 7. Considerações Finais
+O desenvolvimento deste simulador permitiu aplicar, de forma prática, os seguintes conceitos:
+- Abstração de arquivos e diretórios
+- Estruturas de dados em árvore
+- File Control Blocks (FCB) e inodes simulados
+- Controle de acesso com permissões RWX
+- Gerência de espaço em disco por meio de alocação indexada
+
+Embora simplificado, o simulador fornece uma base sólida para o entendimento do funcionamento interno de um sistema de arquivos real.
