@@ -58,8 +58,8 @@ void cmd_handle(int argc, char** argv) {
         cmd_whoami();
     } else if (strcmp(cmd, "stat") == 0) {
         cmd_stat(argc, argv);
-    } else if (strcmp(cmd, "diskinfo") == 0) {
-        cmd_diskinfo();
+    } else if (strcmp(cmd, "df") == 0) {
+        cmd_df();
     } else {
         printf("Comando desconhecido: %s\n", cmd);
         printf("Digite 'help' para ver a lista de comandos disponiveis.\n");

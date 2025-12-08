@@ -153,3 +153,33 @@ void fs_get_path(FsNode* node, char* buffer, size_t size){
         snprintf(buffer, size, "%s/%s", temp, node->name); // Caminho completo
     }
 }
+
+void fs_move_node(FsNode* node, FsNode* new_parent){
+    if (!node || !new_parent || new_parent->type != NODE_DIR) {
+        fprintf(stderr, "Erro: Movimento inválido de nó\n");
+        return;
+    }
+
+    FsNode* old_parent = node->parent;
+    if (!old_parent) {
+        return;
+    }
+
+    FsNode* prev = NULL;
+    FsNode* curr = old_parent->first_child;
+
+    while (curr){
+        if(curr == node){
+            if (prev){
+                prev->next_sibling = curr->next_sibling; // Remove da lista do antigo pai
+            } else {
+                old_parent->first_child = curr->next_sibling; // Atualiza o primeiro filho
+            }
+            curr->next_sibling = NULL; // Desconecta
+            break;
+        }
+        prev = curr;
+        curr = curr->next_sibling;
+    }
+    fs_add_child(new_parent, node); // Adiciona ao novo pai
+}

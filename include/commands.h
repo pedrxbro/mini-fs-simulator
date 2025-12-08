@@ -15,6 +15,6 @@ void cmd_chmod(int argc, char** argv);
 void cmd_user(int argc, char** argv);
 void cmd_whoami();
 void cmd_stat(int argc, char** argv);
-void cmd_diskinfo();
+void cmd_df();
 
 #endif

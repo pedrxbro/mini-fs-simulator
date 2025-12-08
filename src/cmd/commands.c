@@ -401,14 +401,44 @@ void cmd_mv(int argc, char** argv){
     const char* old_name = argv[1];
     const char* new_name = argv[2];
 
-    if(strchr(new_name, '/')){
-        printf("mv: Nomes de arquivo nao podem conter '/'\n");
-        return;
-    }
-
     FsNode* node = fs_find_child(fs_current_dir, old_name);
     if(!node){
         printf("mv: Arquivo '%s' nao encontrado\n", old_name);
+        return;
+    }
+
+    // Mover para o diretório pai
+    if (strcmp(new_name, "..") == 0){
+        if(!fs_current_dir->parent){
+            printf("mv: Direttório pai não existe\n");
+            return;
+        }
+        
+        FsNode* parent = fs_current_dir->parent;
+
+        if(fs_find_child(parent, node->name)){
+            printf("mv: Não foi possível mover. Arquivo '%s' ja existe em '%s'\n", node->name, parent->name);
+            return;
+        }
+
+        fs_move_node(node, parent);
+        return;
+    }
+
+    // Primeiro tenta interpretar new_name como como diretorio de destino
+    FsNode* maybe_dir = fs_find_child(fs_current_dir, new_name);
+    if(maybe_dir && maybe_dir->type == NODE_DIR){
+        if(fs_find_child(maybe_dir, node->name)){
+            printf("mv: Não foi possível mover. Arquivo '%s' ja existe em '%s'\n", node->name, new_name);
+            return;
+        }
+        fs_move_node(node, maybe_dir);
+        return;
+    }
+
+    // Se não for diretório, tenta renomear
+    if(strchr(new_name, '/')){
+        printf("mv: Nomes de arquivo nao podem conter '/'\n");
         return;
     }
 
@@ -591,7 +621,7 @@ void cmd_stat(int argc, char** argv){
     blocks_dump_file(fcb);
 }
 
-void cmd_diskinfo(){
+void cmd_df(){
     int total_blocks = 0;
     int used_blocks  = 0;
     int free_blocks  = 0;

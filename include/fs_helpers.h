@@ -24,4 +24,7 @@ void fs_free_tree(FsNode* node);
 // Monta o caminho absoluto de um nó em um buffer
 void fs_get_path(FsNode* node, char* buffer, size_t size);
 
+// Move um nó para um novo diretório pai
+void fs_move_node(FsNode* node, FsNode* new_parent);
+
 #endif
