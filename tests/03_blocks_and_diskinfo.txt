@@ -1,0 +1,25 @@
+# 03 - Alocação de blocos e estatísticas de disco
+# Objetivo: mostrar alocação indexada, stat e df
+
+df
+
+mkdir home
+cd home
+user owner
+write grande.txt AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+stat grande.txt
+
+df
+
+cp grande.txt copia1.txt
+cp grande.txt copia2.txt
+
+ls -l
+stat copia1.txt
+
+df
+
+rm copia1.txt
+rm copia2.txt
+
+df

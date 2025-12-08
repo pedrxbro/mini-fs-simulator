@@ -1,0 +1,19 @@
+# 02 - Permissões e controle de acesso
+# Objetivo: demonstrar owner/group/other, chmod e permissões RWX
+
+whoami
+
+cd home
+write segredo.txt teste de segurança
+chmod 640 segredo.txt
+ls -l
+
+user group
+whoami
+cat segredo.txt                     # deve funcionar
+write segredo.txt teste grupo       # deve falhar
+
+user other
+whoami
+cat segredo.txt                     # deve falhar
+write segredo.txt teste other       # deve falhar

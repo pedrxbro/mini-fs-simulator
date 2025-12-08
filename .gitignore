@@ -8,3 +8,5 @@ mini_fs
 *.swp
 *.swo
 *~
+
+.vscode/

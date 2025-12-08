@@ -1,0 +1,22 @@
+# 01 - Navegação básica, criação de diretórios e arquivos
+# Objetivo: mostrar estrutura em árvore, mkdir, cd, pwd, ls, touch, cat
+
+whoami
+
+pwd
+ls
+
+mkdir home
+mkdir docs
+ls
+
+cd home
+pwd
+touch a.txt
+write a.txt Trabalho de SO
+ls
+cat a.txt
+
+cd ..
+pwd
+ls

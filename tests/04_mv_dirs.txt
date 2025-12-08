@@ -1,0 +1,33 @@
+# 04 - mv: renomear e mover entre diretórios
+# Objetivo: mostrar que mv renomeia e também move nós na árvore
+
+mkdir home
+mkdir docs
+ls
+
+cd home
+touch a.txt
+ls
+
+mv a.txt b.txt
+ls
+
+mv b.txt ..
+ls               # nao deve mostrar b.txt
+
+cd ..
+ls               # deve mostrar b.txt, home/ e docs/
+
+mv b.txt docs
+ls
+cd docs
+ls               # deve mostrar b.txt
+
+cd /
+mkdir temp
+cd temp
+touch x.txt
+ls
+mv x.txt ..
+cd ..
+ls               # x.txt agora esta no diretorio pai
