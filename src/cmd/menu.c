@@ -20,7 +20,7 @@ void cmd_help(void) {
     printf("  user <owner|group|other> - Altera o usuario atual da simulacao\n");
     printf("  whoami                   - Mostra o usuário atual\n");
     printf("  stat <file>              - Mostra metadados e blocos do arquivo\n");
-    printf("  diskinfo                 - Mostra estatisticas do disco simulado\n");
+    printf("  df                       - Mostra estatisticas do disco simulado\n");
     printf("  exit                     - Sai do simulador\n");
 }
 
